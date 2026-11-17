@@ -1,0 +1,72 @@
+{
+  "name": "duquxian-toolbox-windows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "本地优先的 Windows 个人截图与工具箱应用",
+  "main": "./out/main/index.js",
+  "author": {
+    "name": "duquxian123",
+    "email": "34875503+duquxian123@users.noreply.github.com"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "package:dir": "npm run build && electron-builder --dir --win --x64 && node scripts/apply-exe-icon.mjs",
+    "package": "npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "koffi": "3.3.8",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "45.3.3",
+    "electron-builder": "25.1.8",
+    "electron-vite": "6.0.0",
+    "rcedit": "5.0.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.8",
+    "vitest": "4.1.12"
+  },
+  "build": {
+    "appId": "com.duquxian.toolbox",
+    "productName": "独去闲工具箱",
+    "electronDist": "node_modules/electron/dist",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/koffi/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*",
+      "node_modules/koffi/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    }
+  }
+}
+
