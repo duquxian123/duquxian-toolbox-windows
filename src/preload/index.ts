@@ -1,8 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
+  BatteryAddRequest,
+  BatteryDevice,
   CaptureMode,
   CommitRequest,
+  BatterySettings,
   PinInfo,
   SettingsUpdateResult,
   ToolboxApi,
@@ -40,6 +43,42 @@ const api: ToolboxApi = {
     };
     ipcRenderer.on("toolbox:navigate", listener);
     return () => ipcRenderer.removeListener("toolbox:navigate", listener);
+  },
+  listBatteryCandidates: () => ipcRenderer.invoke("battery:list-candidates"),
+  listBatteryDevices: () => ipcRenderer.invoke("battery:list-devices"),
+  addBatteryDevice: (request: BatteryAddRequest) =>
+    ipcRenderer.invoke("battery:add", request),
+  removeBatteryDevice: (id: string) =>
+    ipcRenderer.invoke("battery:remove", id),
+  renameBatteryDevice: (id: string, name: string) =>
+    ipcRenderer.invoke("battery:rename", id, name),
+  setBatteryDeviceIcon: (id: string, icon: string | null) =>
+    ipcRenderer.invoke("battery:set-icon", id, icon),
+  setBatteryDeviceHidden: (id: string, hidden: boolean) =>
+    ipcRenderer.invoke("battery:set-hidden", id, hidden),
+  setBatteryDeviceAlert: (id: string, threshold: number | null) =>
+    ipcRenderer.invoke("battery:set-alert", id, threshold),
+  reorderBatteryDevices: (ids: string[]) =>
+    ipcRenderer.invoke("battery:reorder", ids),
+  pollBatteryDevicesNow: () =>
+    ipcRenderer.invoke("battery:poll-now"),
+  captureBatteryCalibration: (id: string) =>
+    ipcRenderer.invoke("battery:capture", id),
+  getBatterySettings: () => ipcRenderer.invoke("battery:get-settings"),
+  updateBatterySettings: (patch: Partial<BatterySettings>) =>
+    ipcRenderer.invoke("battery:update-settings", patch),
+  runBatteryDiagnostics: () => ipcRenderer.invoke("battery:diagnostics"),
+  onBatteryUpdate: (callback: (device: BatteryDevice) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, device: BatteryDevice) => {
+      callback(device);
+    };
+    ipcRenderer.on("battery:update", listener);
+    return () => ipcRenderer.removeListener("battery:update", listener);
+  },
+  onBatteryDevicesChanged: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("battery:devices-changed", listener);
+    return () => ipcRenderer.removeListener("battery:devices-changed", listener);
   },
 };
 

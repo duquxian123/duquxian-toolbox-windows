@@ -1,3 +1,14 @@
+import type {
+  BatteryAddRequest,
+  BatteryCalibrationFrame,
+  BatteryDevice,
+  BatteryDiagnosticResult,
+  BatteryLiveDevice,
+  BatterySettings,
+} from "./battery-types";
+
+export * from "./battery-types";
+
 export interface Point {
   x: number;
   y: number;
@@ -190,5 +201,21 @@ export interface ToolboxApi {
   quit(): Promise<void>;
   onHotkeyError(callback: (message: string) => void): () => void;
   onNavigate(callback: (section: string) => void): () => void;
+  listBatteryCandidates(): Promise<BatteryLiveDevice[]>;
+  listBatteryDevices(): Promise<Record<string, BatteryDevice>>;
+  addBatteryDevice(request: BatteryAddRequest): Promise<BatteryDevice>;
+  removeBatteryDevice(id: string): Promise<void>;
+  renameBatteryDevice(id: string, name: string): Promise<BatteryDevice>;
+  setBatteryDeviceIcon(id: string, icon: string | null): Promise<BatteryDevice>;
+  setBatteryDeviceHidden(id: string, hidden: boolean): Promise<BatteryDevice>;
+  setBatteryDeviceAlert(id: string, threshold: number | null): Promise<BatteryDevice>;
+  reorderBatteryDevices(ids: string[]): Promise<void>;
+  pollBatteryDevicesNow(): Promise<void>;
+  captureBatteryCalibration(id: string): Promise<BatteryCalibrationFrame[]>;
+  getBatterySettings(): Promise<BatterySettings>;
+  updateBatterySettings(patch: Partial<BatterySettings>): Promise<BatterySettings>;
+  runBatteryDiagnostics(): Promise<BatteryDiagnosticResult>;
+  onBatteryUpdate(callback: (device: BatteryDevice) => void): () => void;
+  onBatteryDevicesChanged(callback: () => void): () => void;
 }
 

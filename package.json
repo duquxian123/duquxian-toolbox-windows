@@ -9,18 +9,24 @@
     "email": "34875503+duquxian123@users.noreply.github.com"
   },
   "scripts": {
+    "battery:build": "node scripts/build-batteries.mjs",
+    "predev": "npm run battery:build",
     "dev": "electron-vite dev",
+    "prestart": "npm run battery:build",
     "start": "electron-vite preview",
+    "prebuild": "npm run battery:build",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "prepackage": "npm run battery:build",
     "package:dir": "npm run build && electron-builder --dir --win --x64 && node scripts/apply-exe-icon.mjs",
     "package": "npm run build && electron-builder --win --x64"
   },
   "dependencies": {
     "koffi": "3.3.8",
+    "node-hid": "3.3.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -42,9 +48,11 @@
     "appId": "com.duquxian.toolbox",
     "productName": "独去闲工具箱",
     "electronDist": "node_modules/electron/dist",
+    "npmRebuild": false,
     "asar": true,
     "asarUnpack": [
-      "node_modules/koffi/**/*"
+      "node_modules/koffi/**/*",
+      "node_modules/node-hid/**/*"
     ],
     "directories": {
       "output": "dist"
@@ -53,7 +61,16 @@
       "out/**/*",
       "resources/**/*",
       "node_modules/koffi/**/*",
+      "node_modules/node-hid/**/*",
+      "THIRD_PARTY_NOTICES.md",
+      "licenses/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/battery",
+        "to": "battery"
+      }
     ],
     "win": {
       "signAndEditExecutable": false,
@@ -69,4 +86,3 @@
     }
   }
 }
-

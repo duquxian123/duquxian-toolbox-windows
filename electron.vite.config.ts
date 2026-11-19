@@ -12,7 +12,13 @@ export default defineConfig({
     },
     build: {
       rollupOptions: {
-        input: resolve("src/main/index.ts"),
+        input: {
+          index: resolve("src/main/index.ts"),
+          "battery-hid-worker": resolve("src/main/battery/hid/worker.ts"),
+        },
+        output: {
+          entryFileNames: "[name].js",
+        },
       },
     },
   },

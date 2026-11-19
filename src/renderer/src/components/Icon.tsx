@@ -7,6 +7,31 @@ const paths: Record<string, React.ReactNode> = {
       <circle cx="12" cy="13" r="4" />
     </>
   ),
+  battery: (
+    <>
+      <rect x="3" y="6" width="17" height="12" rx="3" />
+      <path d="M20 10v4M7 10v4M11 10v4" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  mouse: (
+    <>
+      <rect x="7" y="2.5" width="10" height="19" rx="5" />
+      <path d="M12 3v6" />
+    </>
+  ),
+  headset: (
+    <>
+      <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
+      <path d="M4 13h3v7H5a1 1 0 0 1-1-1v-6ZM20 13h-3v7h2a1 1 0 0 0 1-1v-6Z" />
+    </>
+  ),
+  controller: (
+    <>
+      <path d="M7 8h10a5 5 0 0 1 4.6 6.9l-1.2 3a2.2 2.2 0 0 1-3.7.6L14 16h-4l-2.7 2.5a2.2 2.2 0 0 1-3.7-.6l-1.2-3A5 5 0 0 1 7 8Z" />
+      <path d="M8 11v4M6 13h4M16 12h.01M18 14h.01" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />

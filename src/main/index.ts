@@ -14,11 +14,15 @@ import { join, dirname } from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import type {
   AppSettings,
+  BatteryAddRequest,
   CaptureMode,
   CommitRequest,
   PinInfo,
   SettingsUpdateResult,
 } from "../shared/types";
+import { BatteryManager } from "./battery/manager";
+import { BatteryNotifier } from "./battery/notifier";
+import { BatteryStore } from "./battery/store";
 import { CaptureService } from "./capture-service";
 import { errorMessage } from "./fs-utils";
 import { installToolboxProtocol, registerToolboxScheme } from "./protocol";
@@ -39,6 +43,8 @@ if (!hasSingleInstanceLock) {
 let settings: SettingsService;
 let windows: WindowManager;
 let capture: CaptureService;
+let batteryStore: BatteryStore;
+let batteryManager: BatteryManager;
 let tray: Tray | null = null;
 let hotkeyError: string | null = null;
 let quitting = false;
@@ -67,7 +73,7 @@ app.whenReady().then(initialize).catch((error) => {
 });
 
 async function initialize(): Promise<void> {
-  app.setAppUserModelId("com.duquxian.toolbox");
+  app.setAppUserModelId("com.duquxian.toolbox.app");
   const userDataPath = app.getPath("userData");
   const sessionsRoot = join(userDataPath, "sessions");
   const pinsRoot = join(userDataPath, "pins");
@@ -80,6 +86,26 @@ async function initialize(): Promise<void> {
 
   settings = await SettingsService.create();
   windows = new WindowManager();
+  batteryStore = await BatteryStore.create();
+  const batteryNotifier = new BatteryNotifier(
+    batteryStore,
+    () => void windows.showMain("battery"),
+  );
+  batteryManager = new BatteryManager(batteryStore, batteryNotifier);
+  batteryManager.setListeners(
+    (device) => {
+      if (windows.mainWindow && !windows.mainWindow.isDestroyed()) {
+        windows.mainWindow.webContents.send("battery:update", device);
+      }
+      rebuildTrayMenu();
+    },
+    () => {
+      if (windows.mainWindow && !windows.mainWindow.isDestroyed()) {
+        windows.mainWindow.webContents.send("battery:devices-changed");
+      }
+      rebuildTrayMenu();
+    },
+  );
   capture = new CaptureService(
     windows,
     settings,
@@ -100,6 +126,9 @@ async function initialize(): Promise<void> {
   registerHotkey(settings.get().hotkey);
   createTray();
   applyLoginItem(settings.get().launchAtLogin);
+  void batteryManager.start().catch((error) => {
+    console.error("电量模块启动失败", error);
+  });
 }
 
 function registerHotkey(hotkey: string): { ok: boolean; error?: string } {
@@ -308,6 +337,123 @@ function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0] ?? null;
   });
 
+  ipcMain.handle("battery:list-candidates", (event) => {
+    assertMainSender(event.sender);
+    return batteryManager.listCandidates();
+  });
+
+  ipcMain.handle("battery:list-devices", (event) => {
+    assertMainSender(event.sender);
+    return batteryStore.getDevices();
+  });
+
+  ipcMain.handle("battery:add", (event, request: BatteryAddRequest) => {
+    assertMainSender(event.sender);
+    if (
+      !request ||
+      typeof request.id !== "string" ||
+      typeof request.driverId !== "string" ||
+      typeof request.product !== "string" ||
+      typeof request.manufacturer !== "string"
+    ) {
+      throw new Error("设备参数无效");
+    }
+    const device = batteryStore.upsertDevice(request.id, {
+      driverId: request.driverId,
+      profile: request.profile ?? null,
+      product: request.product,
+      manufacturer: request.manufacturer,
+      hidden: false,
+    });
+    batteryManager.restart();
+    rebuildTrayMenu();
+    return device;
+  });
+
+  ipcMain.handle("battery:remove", (event, id: string) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string") throw new Error("设备参数无效");
+    batteryStore.removeDevice(id);
+    batteryManager.restart();
+    rebuildTrayMenu();
+  });
+
+  ipcMain.handle("battery:rename", (event, id: string, name: string) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string" || typeof name !== "string") throw new Error("设备参数无效");
+    const device = batteryStore.upsertDevice(id, {
+      customName: name.trim().slice(0, 40) || null,
+    });
+    batteryManager.restart();
+    rebuildTrayMenu();
+    return device;
+  });
+
+  ipcMain.handle("battery:set-icon", (event, id: string, icon: string | null) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string") throw new Error("设备参数无效");
+    const customIcon = typeof icon === "string"
+      ? Array.from(icon).slice(0, 4).join("").trim() || null
+      : null;
+    return batteryStore.upsertDevice(id, { customIcon });
+  });
+
+  ipcMain.handle("battery:set-hidden", (event, id: string, hidden: boolean) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string") throw new Error("设备参数无效");
+    const device = batteryStore.upsertDevice(id, { hidden: !!hidden });
+    batteryManager.restart();
+    rebuildTrayMenu();
+    return device;
+  });
+
+  ipcMain.handle("battery:set-alert", (event, id: string, threshold: number | null) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string") throw new Error("设备参数无效");
+    const numeric = Number(threshold);
+    const alertThreshold = threshold == null || Number.isNaN(numeric)
+      ? null
+      : Math.max(5, Math.min(95, Math.round(numeric / 5) * 5));
+    return batteryStore.upsertDevice(id, { alertThreshold });
+  });
+
+  ipcMain.handle("battery:reorder", (event, ids: string[]) => {
+    assertMainSender(event.sender);
+    if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
+      throw new Error("设备顺序无效");
+    }
+    batteryStore.reorderDevices(ids);
+  });
+
+  ipcMain.handle("battery:poll-now", async (event) => {
+    assertMainSender(event.sender);
+    await batteryManager.pollNow();
+  });
+
+  ipcMain.handle("battery:capture", (event, id: string) => {
+    assertMainSender(event.sender);
+    if (typeof id !== "string") throw new Error("设备参数无效");
+    return batteryManager.captureCalibration(id);
+  });
+
+  ipcMain.handle("battery:get-settings", (event) => {
+    assertMainSender(event.sender);
+    return batteryStore.getSettings();
+  });
+
+  ipcMain.handle("battery:update-settings", (event, patch) => {
+    assertMainSender(event.sender);
+    if (!patch || typeof patch !== "object") throw new Error("电量设置无效");
+    const updated = batteryManager.updateSettings(patch);
+    rebuildTrayMenu();
+    return updated;
+  });
+
+  ipcMain.handle("battery:diagnostics", (event) => {
+    assertMainSender(event.sender);
+    return batteryManager.diagnostics();
+  });
+
   ipcMain.handle("app:show-main", async (event, section?: string) => {
     assertKnownSender(event.sender);
     await windows.showMain(section);
@@ -384,6 +530,24 @@ function rebuildTrayMenu(): void {
     return;
   }
   const hotkey = settings.get().hotkey;
+  const batteryDevices = batteryStore
+    ? Object.values(batteryStore.getDevices()).filter((device) => !device.hidden)
+    : [];
+  const batteryEnabled = batteryStore?.getSettings().trayEnabled && batteryDevices.length > 0;
+  const batteryStatus = (device: (typeof batteryDevices)[number]): string => {
+    const name = device.customName || device.product || "外设";
+    if (device.online === false) return `${name}：未连接`;
+    if (typeof device.lastReading?.capacity === "number") {
+      const charging = device.lastReading.charging ? "，充电中" : "";
+      return `${name}：${device.lastReading.capacity}%${charging}`;
+    }
+    return `${name}：等待读数`;
+  };
+  tray.setToolTip(
+    batteryEnabled
+      ? ["独去闲工具箱", ...batteryDevices.slice(0, 5).map(batteryStatus)].join("\n")
+      : "独去闲工具箱",
+  );
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
@@ -398,6 +562,25 @@ function rebuildTrayMenu(): void {
         label: "重复上次选区",
         click: () => void startCapture("repeat"),
       },
+      ...(batteryEnabled
+        ? [
+            { type: "separator" as const },
+            {
+              label: "Battery Hub",
+              submenu: [
+                ...batteryDevices.map((device) => ({
+                  label: batteryStatus(device),
+                  click: () => void windows.showMain("battery"),
+                })),
+                { type: "separator" as const },
+                {
+                  label: "打开 Battery Hub",
+                  click: () => void windows.showMain("battery"),
+                },
+              ],
+            },
+          ]
+        : []),
       { type: "separator" },
       {
         label: "设置",
@@ -429,6 +612,7 @@ app.on("will-quit", () => {
   }
   globalShortcut.unregisterAll();
   void capture?.dispose();
+  void batteryManager?.stop();
   tray?.destroy();
 });
 

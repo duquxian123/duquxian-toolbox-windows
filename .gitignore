@@ -22,3 +22,5 @@ Thumbs.db
 *.log
 
 
+zctemp/
+resources/battery/system-batteries.exe

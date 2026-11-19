@@ -1,0 +1,1073 @@
+.battery-hub {
+  display: grid;
+  min-width: 0;
+  min-height: 100%;
+  grid-template-columns: minmax(0, 205px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.battery-nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  min-height: calc(100vh - 156px);
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  align-self: start;
+  overflow-x: clip;
+  padding: 2px 14px 12px 0;
+  border-right: 1px solid var(--line);
+}
+
+.battery-nav-main {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 3px;
+}
+
+.battery-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.battery-nav-item:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.battery-nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.battery-device-nav {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+}
+
+.battery-device-link {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 33px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.battery-device-link:hover,
+.battery-device-link.selected {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.battery-device-link.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.battery-device-link-name {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  align-items: center;
+  gap: 7px;
+}
+
+.battery-device-link-name > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battery-device-mini-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.battery-device-link small {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.battery-device-link small.good {
+  color: var(--accent);
+}
+
+.battery-device-link small.warn {
+  color: #a57724;
+}
+
+.battery-device-link small.low {
+  color: var(--danger);
+}
+
+.battery-content {
+  min-width: 0;
+}
+
+.battery-page-stack {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 30px;
+}
+
+.battery-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.battery-heading > div {
+  min-width: 0;
+}
+
+.battery-heading h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.battery-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.battery-card-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(245px, 100%), 1fr));
+  gap: 14px;
+}
+
+.battery-card-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(min(205px, 100%), 1fr));
+}
+
+.battery-device-card {
+  position: relative;
+  display: grid;
+  min-height: 285px;
+  align-content: start;
+  justify-items: center;
+  gap: 12px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--surface) 85%, transparent), transparent 34%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  outline: 0;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.battery-device-card:hover,
+.battery-device-card:focus-visible {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-strong);
+  transform: translateY(-1px);
+}
+
+.battery-device-card.is-hidden {
+  opacity: 0.72;
+}
+
+.battery-card-grid.compact .battery-device-card {
+  min-height: 238px;
+  padding: 14px;
+}
+
+.battery-card-grid.compact .battery-gauge {
+  width: 104px;
+  height: 104px;
+}
+
+.battery-card-menu {
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  right: 9px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.battery-device-card:hover .battery-card-menu,
+.battery-device-card:focus-within .battery-card-menu {
+  opacity: 1;
+}
+
+.battery-card-menu button {
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.battery-card-menu button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.battery-card-menu button.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.battery-gauge {
+  position: relative;
+  width: 122px;
+  height: 122px;
+  flex: 0 0 auto;
+}
+
+.battery-gauge.large {
+  width: 176px;
+  height: 176px;
+}
+
+.battery-gauge svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.battery-gauge circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.battery-gauge .track {
+  stroke: var(--surface-muted);
+}
+
+.battery-gauge .fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 360ms ease;
+}
+
+.battery-gauge.warn .fill {
+  stroke: #b1842f;
+}
+
+.battery-gauge.low .fill {
+  stroke: var(--danger);
+}
+
+.battery-gauge.charge .fill {
+  stroke: #3a9b7f;
+}
+
+.battery-gauge.off .fill {
+  stroke: var(--line-strong);
+}
+
+.battery-gauge-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+
+.battery-gauge-label strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.battery-gauge.large .battery-gauge-label strong {
+  font-size: 42px;
+}
+
+.battery-gauge-label .spark {
+  color: var(--accent);
+}
+
+.battery-card-title {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 9px;
+}
+
+.battery-card-icon {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.battery-card-title div {
+  min-width: 0;
+}
+
+.battery-card-title strong,
+.battery-card-title span {
+  display: block;
+}
+
+.battery-card-title strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battery-card-title span {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battery-card-status {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.battery-card-track {
+  width: 100%;
+  height: 3px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--surface-muted);
+}
+
+.battery-card-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.battery-card-track span.warn {
+  background: #b1842f;
+}
+
+.battery-card-track span.low {
+  background: var(--danger);
+}
+
+.battery-empty {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.battery-empty > span:not(.battery-spinner) {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--surface-muted);
+  color: var(--accent);
+}
+
+.battery-empty strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.battery-empty p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.battery-hidden-link {
+  justify-self: start;
+  padding: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.battery-hidden-link:hover {
+  color: var(--accent);
+}
+
+.battery-main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 3px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+.battery-detail-heading {
+  align-items: center;
+}
+
+.battery-detail-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 11px;
+}
+
+.battery-detail-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 21px;
+}
+
+.battery-detail-hero {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.battery-detail-summary {
+  display: grid;
+  gap: 18px;
+}
+
+.battery-detail-status {
+  display: grid;
+  gap: 4px;
+}
+
+.battery-detail-status > span {
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.battery-detail-status > span.warn {
+  background: #f4ead3;
+  color: #87651f;
+}
+
+.battery-detail-status > span.low,
+.battery-detail-status > span.off {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.battery-detail-status > span.charge {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.battery-detail-status small {
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.battery-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.battery-facts div {
+  min-width: 0;
+  padding-right: 10px;
+  border-right: 1px solid var(--line);
+}
+
+.battery-facts div:last-child {
+  border-right: 0;
+}
+
+.battery-facts span,
+.battery-facts strong {
+  display: block;
+}
+
+.battery-facts span {
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.battery-facts strong {
+  margin-top: 5px;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battery-panel,
+.battery-settings-list,
+.battery-diagnostics {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.battery-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.battery-panel-head strong {
+  font-size: 13px;
+}
+
+.battery-panel-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.battery-range {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+
+.battery-range button {
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.battery-range button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.battery-chart {
+  display: block;
+  width: 100%;
+  height: 200px;
+  margin-top: 10px;
+  overflow: visible;
+}
+
+.battery-chart line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.battery-chart text {
+  fill: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.battery-chart .area {
+  fill: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.battery-chart .line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.battery-chart circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.battery-chart-empty {
+  display: grid;
+  height: 150px;
+  place-items: center;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.battery-inline-field,
+.battery-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.battery-inline-field input,
+.battery-number-control input {
+  width: 74px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.battery-data-note {
+  margin: -4px 0 0;
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.battery-candidate-list {
+  display: grid;
+  gap: 9px;
+}
+
+.battery-candidate {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.battery-candidate-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.battery-candidate strong {
+  font-size: 13px;
+}
+
+.battery-candidate p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.battery-supported,
+.battery-generic {
+  padding: 3px 7px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.battery-generic {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.battery-calibration-step {
+  display: grid;
+  gap: 9px;
+}
+
+.battery-calibration-step > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.battery-scan-progress {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.battery-scan-progress > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.battery-scan-progress > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--surface-muted);
+}
+
+.battery-scan-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 250ms linear;
+}
+
+.battery-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: battery-spin 800ms linear infinite;
+}
+
+.battery-frames {
+  display: grid;
+  gap: 10px;
+}
+
+.battery-frame {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.battery-frame > div:first-child {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.battery-bytes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.battery-bytes button {
+  min-width: 28px;
+  height: 27px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.battery-bytes button:hover {
+  border-color: var(--line-strong);
+}
+
+.battery-bytes button.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.battery-settings-page {
+  max-width: 930px;
+}
+
+.battery-settings-group {
+  display: grid;
+  gap: 7px;
+}
+
+.battery-settings-group h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.battery-setting-row {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0;
+}
+
+.battery-setting-row + .battery-setting-row {
+  border-top: 1px solid var(--line);
+}
+
+.battery-setting-row strong {
+  font-size: 12px;
+}
+
+.battery-setting-row p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.battery-setting-row select {
+  height: 33px;
+  min-width: 125px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  font-size: 11px;
+}
+
+.battery-number-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.battery-diagnostics {
+  display: grid;
+  gap: 9px;
+}
+
+.battery-diagnostics > strong.good {
+  color: var(--accent);
+}
+
+.battery-diagnostics > strong.warn {
+  color: #8b6b21;
+}
+
+.battery-diagnostics > strong.bad {
+  color: var(--danger);
+}
+
+.battery-diagnostics > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.battery-check {
+  display: flex;
+  gap: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.battery-check > span {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.battery-check[data-status="warn"] > span {
+  background: #f4ead3;
+  color: #87651f;
+}
+
+.battery-check[data-status="fail"] > span {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.battery-check p,
+.battery-check small {
+  display: block;
+  margin: 2px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.battery-check small {
+  color: var(--faint);
+}
+
+.battery-dialog-scrim {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, #171512 34%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.battery-dialog {
+  display: grid;
+  width: min(390px, 100%);
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-strong);
+}
+
+.battery-dialog h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.battery-dialog p {
+  margin: -5px 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.battery-dialog > input {
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.battery-dialog > input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.battery-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+@keyframes battery-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1050px) {
+  .battery-hub {
+    grid-template-columns: minmax(0, 170px) minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .battery-detail-hero {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+
+  .battery-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 940px) {
+  .battery-hub {
+    display: block;
+    grid-template-columns: 1fr;
+  }
+
+  .battery-nav {
+    position: static;
+    width: 100%;
+    min-height: auto;
+    margin-bottom: 18px;
+    padding: 0 0 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  .battery-device-nav {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-left: 0;
+  }
+
+  .battery-device-link {
+    min-width: 145px;
+  }
+
+  .battery-detail-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}

@@ -3,10 +3,11 @@ import type { AppSettings } from "@shared/types";
 import { Icon } from "./components/Icon";
 import { Toast, type Notice } from "./components/Toast";
 import { HomePage } from "./home/HomePage";
+import { BatteryHubPage } from "./battery/BatteryHubPage";
 import { SettingsPage } from "./settings/SettingsPage";
 import { errorMessage } from "./utils";
 
-type Workspace = "capture" | "settings";
+type Workspace = "capture" | "battery" | "settings";
 
 export function App() {
   const [workspace, setWorkspace] = useState<Workspace>("capture");
@@ -46,7 +47,13 @@ export function App() {
 
   useEffect(() => {
     return window.toolbox.onNavigate((nextSection) => {
-      setWorkspace(nextSection === "settings" ? "settings" : "capture");
+      setWorkspace(
+        nextSection === "settings"
+          ? "settings"
+          : nextSection === "battery"
+            ? "battery"
+            : "capture",
+      );
     });
   }, []);
 
@@ -101,6 +108,12 @@ export function App() {
             label="截图"
             onClick={() => setWorkspace("capture")}
           />
+          <NavItem
+            active={workspace === "battery"}
+            icon="battery"
+            label="Battery Hub"
+            onClick={() => setWorkspace("battery")}
+          />
         </nav>
         <div className="sidebar-footer">
           <NavItem
@@ -116,7 +129,11 @@ export function App() {
         <header className="topbar">
           <div className="topbar-title">
             <span className="topbar-tool">
-              {workspace === "settings" ? "系统设置" : "独去闲工具箱"}
+              {workspace === "settings"
+                ? "系统设置"
+                : workspace === "battery"
+                  ? "Battery Hub"
+                  : "独去闲工具箱"}
             </span>
           </div>
           <div className="topbar-actions">
@@ -131,6 +148,7 @@ export function App() {
           {workspace === "capture" && (
             <HomePage settings={settings} onCapture={startCapture} />
           )}
+          {workspace === "battery" && <BatteryHubPage notify={notify} />}
           {workspace === "settings" && (
             <SettingsPage
               version={version}
@@ -158,7 +176,11 @@ function NavItem({
   onClick: () => void;
 }) {
   return (
-    <button className={`nav-item ${active ? "active" : ""}`} onClick={onClick}>
+    <button
+      className={`nav-item ${active ? "active" : ""}`}
+      aria-label={label}
+      onClick={onClick}
+    >
       <Icon name={icon} size={18} />
       <span>{label}</span>
     </button>
