@@ -1,71 +1,36 @@
-import { useState } from "react";
-import type { AppSettings, ThemeMode } from "@shared/types";
-import { Icon } from "../components/Icon";
+import type { ComponentType } from "react";
+import type { CoreSettings, ThemeMode } from "@shared/types";
+import { PluginErrorBoundary } from "../components/PluginErrorBoundary";
+import type { Notify, PluginPageProps } from "../plugin/types";
 import { errorMessage } from "../utils";
-
-function acceleratorFromEvent(event: React.KeyboardEvent): string | null {
-  const ignoredKeys = new Set(["Control", "Alt", "Shift", "Meta"]);
-  if (ignoredKeys.has(event.key)) {
-    return null;
-  }
-  const modifiers: string[] = [];
-  if (event.ctrlKey) {
-    modifiers.push("Ctrl");
-  }
-  if (event.altKey) {
-    modifiers.push("Alt");
-  }
-  if (event.shiftKey) {
-    modifiers.push("Shift");
-  }
-  if (event.metaKey) {
-    modifiers.push("Super");
-  }
-  if (!modifiers.some((modifier) => modifier !== "Shift")) {
-    return null;
-  }
-  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-  return [...modifiers, key].join("+");
-}
 
 export function SettingsPage({
   version,
   settings,
   onSettingsChanged,
   notify,
+  pluginSections,
 }: {
   version: string;
-  settings: AppSettings;
-  onSettingsChanged: (settings: AppSettings) => void;
-  notify: (message: string, type?: "success" | "error" | "info") => void;
+  settings: CoreSettings;
+  onSettingsChanged: (settings: CoreSettings) => void;
+  notify: Notify;
+  pluginSections: Array<{
+    id: string;
+    label: string;
+    Section: ComponentType<PluginPageProps>;
+  }>;
 }) {
-  const [recordingHotkey, setRecordingHotkey] = useState(false);
-  const [busy, setBusy] = useState(false);
-
   const update = async (
-    patch: Partial<AppSettings>,
+    patch: Partial<CoreSettings>,
     success = "设置已保存",
   ): Promise<void> => {
-    setBusy(true);
     try {
-      const result = await window.toolbox.updateSettings(patch);
-      onSettingsChanged(result.settings);
-      if (!result.hotkey.ok) {
-        notify(result.hotkey.error ?? "快捷键注册失败", "error");
-      } else {
-        notify(success);
-      }
+      const updated = await window.toolbox.updateSettings(patch);
+      onSettingsChanged(updated);
+      notify(success);
     } catch (error) {
       notify(errorMessage(error), "error");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const chooseDirectory = async () => {
-    const directory = await window.toolbox.chooseSaveDirectory();
-    if (directory) {
-      await update({ saveDirectory: directory }, "保存目录已更新");
     }
   };
 
@@ -74,60 +39,9 @@ export function SettingsPage({
       <header className="page-heading">
         <div>
           <h1>系统设置</h1>
-          <p>快捷键、保存规则与应用行为。</p>
+          <p>主题、应用行为与各插件配置。</p>
         </div>
       </header>
-
-      <section className="settings-group">
-        <h2 className="settings-group-title">截图</h2>
-        <div className="settings-list">
-          <div className="settings-row">
-            <div>
-              <strong>全局截图快捷键</strong>
-              <p>点击后按下新的组合键。</p>
-            </div>
-            <button
-              className={`hotkey-input ${recordingHotkey ? "recording" : ""}`}
-              disabled={busy}
-              onFocus={() => setRecordingHotkey(true)}
-              onBlur={() => setRecordingHotkey(false)}
-              onKeyDown={(event) => {
-                event.preventDefault();
-                const value = acceleratorFromEvent(event);
-                if (value) {
-                  setRecordingHotkey(false);
-                  event.currentTarget.blur();
-                  void update({ hotkey: value }, "快捷键已更新");
-                }
-              }}
-            >
-              {recordingHotkey ? "请按下组合键…" : settings.hotkey}
-            </button>
-          </div>
-          <div className="settings-row">
-            <div>
-              <strong>保存目录</strong>
-              <p>按 Ctrl+S 保存为 PNG。</p>
-            </div>
-            <button className="directory-button" onClick={() => void chooseDirectory()}>
-              <span>{settings.saveDirectory}</span>
-              <Icon name="folder" size={15} />
-            </button>
-          </div>
-          <ToggleRow
-            title="立即复制"
-            description="完成后直接复制，跳过编辑器。"
-            checked={settings.autoCopy}
-            onChange={(checked) => void update({ autoCopy: checked })}
-          />
-          <ToggleRow
-            title="包含鼠标指针"
-            description="在截图中合成当前指针。"
-            checked={settings.captureCursor}
-            onChange={(checked) => void update({ captureCursor: checked })}
-          />
-        </div>
-      </section>
 
       <section className="settings-group">
         <h2 className="settings-group-title">应用</h2>
@@ -135,7 +49,7 @@ export function SettingsPage({
           <div className="settings-row">
             <div>
               <strong>界面主题</strong>
-              <p>主窗口与截图编辑器共用。</p>
+              <p>主窗口与所有插件窗口共用。</p>
             </div>
             <select
               className="select-control"
@@ -158,13 +72,26 @@ export function SettingsPage({
         </div>
       </section>
 
+      {pluginSections.map((plugin) => {
+        const Section = plugin.Section;
+        return (
+          <PluginErrorBoundary
+            key={plugin.id}
+            pluginId={plugin.id}
+            compact
+          >
+            <Section notify={notify} />
+          </PluginErrorBoundary>
+        );
+      })}
+
       <section className="settings-group">
         <h2 className="settings-group-title">关于</h2>
         <div className="settings-list">
           <div className="settings-row">
             <div>
               <strong>独去闲工具箱</strong>
-              <p>截图与设置只保存在本机。</p>
+              <p>所有数据只保存在本机。</p>
             </div>
             <span className="about-version">{version}</span>
           </div>

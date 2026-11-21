@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AppSettings } from "@shared/types";
+import type { PluginRuntimeInfo } from "@shared/plugin";
+import type { CoreSettings } from "@shared/types";
 import { Icon } from "./components/Icon";
+import {
+  PluginErrorBoundary,
+  PluginErrorCard,
+} from "./components/PluginErrorBoundary";
 import { Toast, type Notice } from "./components/Toast";
-import { HomePage } from "./home/HomePage";
-import { BatteryHubPage } from "./battery/BatteryHubPage";
+import { pluginLoadErrors, plugins } from "./plugin/registry";
+import type { PluginRendererModule } from "./plugin/types";
 import { SettingsPage } from "./settings/SettingsPage";
 import { errorMessage } from "./utils";
 
-type Workspace = "capture" | "battery" | "settings";
-
 export function App() {
-  const [workspace, setWorkspace] = useState<Workspace>("capture");
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<CoreSettings | null>(null);
+  const [runtimePlugins, setRuntimePlugins] = useState<PluginRuntimeInfo[]>(
+    [],
+  );
   const [version, setVersion] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [startupError, setStartupError] = useState<string | null>(null);
 
   const notify = useCallback(
     (message: string, type: Notice["type"] = "success") => {
@@ -33,11 +40,13 @@ export function App() {
         }
         setSettings(bootstrap.settings);
         setVersion(bootstrap.version);
-        if (bootstrap.hotkeyError) {
-          notify(bootstrap.hotkeyError, "error");
-        }
+        setRuntimePlugins(bootstrap.plugins);
+        setActiveId((current) => current ?? bootstrap.plugins[0]?.id ?? null);
       })
-      .catch((error) => notify(errorMessage(error), "error"))
+      .catch((error) => {
+        setStartupError(errorMessage(error));
+        notify(errorMessage(error), "error");
+      })
       .finally(() => active && setLoading(false));
 
     return () => {
@@ -45,21 +54,26 @@ export function App() {
     };
   }, [notify]);
 
-  useEffect(() => {
-    return window.toolbox.onNavigate((nextSection) => {
-      setWorkspace(
-        nextSection === "settings"
-          ? "settings"
-          : nextSection === "battery"
-            ? "battery"
-            : "capture",
-      );
-    });
-  }, []);
+  useEffect(
+    () =>
+      window.toolbox.onPluginStatusChanged((next) => {
+        setRuntimePlugins(next);
+        setActiveId((current) => current ?? next[0]?.id ?? null);
+      }),
+    [],
+  );
 
   useEffect(() => {
-    return window.toolbox.onHotkeyError((message) => notify(message, "error"));
-  }, [notify]);
+    return window.toolbox.onNavigate((nextSection) => {
+      if (nextSection === "settings") {
+        setActiveId("settings");
+        return;
+      }
+      if (runtimePlugins.some((plugin) => plugin.id === nextSection)) {
+        setActiveId(nextSection);
+      }
+    });
+  }, [runtimePlugins]);
 
   useEffect(() => {
     if (!settings) {
@@ -76,90 +90,153 @@ export function App() {
     return () => media.removeEventListener("change", apply);
   }, [settings]);
 
-  const startCapture = async (mode: "region" | "repeat" | "fullscreen") => {
-    try {
-      const result = await window.toolbox.startCapture(mode);
-      if (!result.ok) {
-        notify(result.error ?? "无法开始截图", "error");
-      }
-    } catch (error) {
-      notify(errorMessage(error), "error");
-    }
-  };
-
-  if (loading || !settings) {
+  if (loading || (!settings && !startupError)) {
     return (
       <div className="loading-screen">
         <span className="loading-mark">
-          <Icon name="camera" size={24} />
+          <Icon name="spark" size={24} />
         </span>
         <strong>正在加载</strong>
       </div>
     );
   }
 
+  if (!settings) {
+    return (
+      <div className="loading-screen">
+        <Icon name="spark" size={24} />
+        <strong>应用启动失败</strong>
+        <span>{startupError}</span>
+      </div>
+    );
+  }
+
+  const modules = new Map(
+    plugins.map((plugin) => [plugin.id, plugin] as const),
+  );
+  const entries = runtimePlugins.map((info) => ({
+    ...info,
+    module: modules.get(info.id),
+  }));
+  const activePlugin = entries.find((plugin) => plugin.id === activeId) ?? null;
+  const activeModule = activePlugin?.module;
+  const showingSettings = activeId === "settings";
+  const ActivePage = activeModule?.Page;
+  const activeError =
+    activePlugin?.error ||
+    (activePlugin ? pluginLoadErrors.get(activePlugin.id) : null);
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <nav className="sidebar-tools">
-          <NavItem
-            active={workspace === "capture"}
-            icon="camera"
-            label="截图"
-            onClick={() => setWorkspace("capture")}
-          />
-          <NavItem
-            active={workspace === "battery"}
-            icon="battery"
-            label="Battery Hub"
-            onClick={() => setWorkspace("battery")}
-          />
-        </nav>
-        <div className="sidebar-footer">
-          <NavItem
-            active={workspace === "settings"}
-            icon="settings"
-            label="系统设置"
-            onClick={() => setWorkspace("settings")}
-          />
-        </div>
-      </aside>
-
-      <main className="main-panel">
-        <header className="topbar">
-          <div className="topbar-title">
-            <span className="topbar-tool">
-              {workspace === "settings"
-                ? "系统设置"
-                : workspace === "battery"
-                  ? "Battery Hub"
-                  : "独去闲工具箱"}
-            </span>
+        <aside className="sidebar">
+          <nav className="sidebar-tools">
+            {entries.map((plugin) => {
+              const IconComponent = plugin.module?.Icon;
+              return (
+              <NavItem
+                key={plugin.id}
+                active={activeId === plugin.id}
+                icon={
+                  IconComponent ? (
+                    <IconComponent size={18} />
+                  ) : (
+                    <Icon name="spark" size={18} />
+                  )
+                }
+                label={plugin.navTitle}
+                onClick={() => setActiveId(plugin.id)}
+              />
+              );
+            })}
+          </nav>
+          <div className="sidebar-footer">
+            <NavItem
+              active={showingSettings}
+              icon={<Icon name="settings" size={18} />}
+              label="系统设置"
+              onClick={() => setActiveId("settings")}
+            />
           </div>
-          <div className="topbar-actions">
-            {workspace === "settings" && (
-              <button className="action primary" onClick={() => void startCapture("region")}>
-                <Icon name="camera" size={16} /> 开始截图
-              </button>
+        </aside>
+
+        <main className="main-panel">
+          <header className="topbar">
+            <div className="topbar-title">
+              <span className="topbar-tool">
+                {showingSettings ? "系统设置" : (activePlugin?.navTitle ?? "独去闲工具箱")}
+              </span>
+            </div>
+          </header>
+          <div className="page-content">
+            {showingSettings && (
+              <SettingsPage
+                version={version}
+                settings={settings}
+                onSettingsChanged={setSettings}
+                notify={notify}
+                pluginSections={entries.flatMap((plugin) =>
+                  plugin.state === "ready" &&
+                  plugin.module?.SettingsSection
+                    ? [
+                        {
+                          id: plugin.id,
+                          label: plugin.navTitle,
+                          Section: plugin.module.SettingsSection,
+                        },
+                      ]
+                    : [],
+                )}
+              />
+            )}
+            {!showingSettings && activePlugin?.state === "failed" && (
+              <PluginErrorCard
+                pluginId={activePlugin.id}
+                message={activeError ?? "插件初始化失败"}
+                onRetry={() => window.location.reload()}
+              />
+            )}
+            {!showingSettings && activePlugin?.state === "loading" && (
+              <div className="plugin-loading-card">
+                <Icon name="spark" size={18} />
+                <span>正在加载 {activePlugin.navTitle}…</span>
+              </div>
+            )}
+            {!showingSettings &&
+              activePlugin?.state === "ready" &&
+              ActivePage && (
+                <PluginErrorBoundary pluginId={activePlugin.id}>
+                  <ActivePage notify={notify} />
+                </PluginErrorBoundary>
+              )}
+            {!showingSettings &&
+              activePlugin?.state === "ready" &&
+              !ActivePage && (
+                <PluginErrorCard
+                  pluginId={activePlugin.id}
+                  message={
+                    activeError ?? "插件渲染入口未加载，或缺少页面导出。"
+                  }
+                  onRetry={() => window.location.reload()}
+                />
+              )}
+            {!showingSettings && !activePlugin && entries.length > 0 && (
+              <div className="plugin-loading-card">
+                <span>请选择一个插件</span>
+              </div>
+            )}
+            {!showingSettings && entries.length === 0 && (
+              <div className="page-stack">
+                <header className="page-heading">
+                  <div>
+                    <h1>未安装插件</h1>
+                    <p>把插件目录放到 src/plugins 下即可显示在这里。</p>
+                  </div>
+                </header>
+              </div>
             )}
           </div>
-        </header>
-        <div className="page-content">
-          {workspace === "capture" && (
-            <HomePage settings={settings} onCapture={startCapture} />
-          )}
-          {workspace === "battery" && <BatteryHubPage notify={notify} />}
-          {workspace === "settings" && (
-            <SettingsPage
-              version={version}
-              settings={settings}
-              onSettingsChanged={setSettings}
-              notify={notify}
-            />
-          )}
-        </div>
-      </main>
-      <Toast notice={notice} onClose={() => setNotice(null)} />
+        </main>
+        <Toast notice={notice} onClose={() => setNotice(null)} />
     </div>
   );
 }
@@ -171,7 +248,7 @@ function NavItem({
   onClick,
 }: {
   active: boolean;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   onClick: () => void;
 }) {
@@ -181,7 +258,7 @@ function NavItem({
       aria-label={label}
       onClick={onClick}
     >
-      <Icon name={icon} size={18} />
+      {icon}
       <span>{label}</span>
     </button>
   );

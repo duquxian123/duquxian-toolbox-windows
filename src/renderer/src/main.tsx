@@ -1,35 +1,54 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import { CaptureOverlay } from "./capture/CaptureOverlay";
-import { PinWindow } from "./pin/PinWindow";
+import {
+  PluginErrorBoundary,
+  PluginErrorCard,
+} from "./components/PluginErrorBoundary";
+import {
+  loadPluginModules,
+  pluginViews,
+} from "./plugin/registry";
 import "./styles/base.css";
 import "./styles/shell.css";
 import "./styles/pages.css";
-import "./styles/capture.css";
 
 const params = new URLSearchParams(window.location.search);
 const view = params.get("view");
 document.documentElement.dataset.windowView = view ?? "main";
 const root = createRoot(document.getElementById("root")!);
 
-if (view === "capture") {
+async function boot(): Promise<void> {
+  await loadPluginModules();
+  const ViewComponent = view ? pluginViews[view] : undefined;
+  if (!view) {
+    root.render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+    return;
+  }
+
+  const pluginId = view.split(":")[0] || "unknown";
+  if (!ViewComponent) {
+    root.render(
+      <PluginErrorCard
+        pluginId={pluginId}
+        message="找不到该插件视图，插件可能已被删除或加载失败。"
+        onRetry={() => window.location.reload()}
+      />,
+    );
+    return;
+  }
+
   root.render(
     <StrictMode>
-      <CaptureOverlay sessionId={params.get("sessionId") ?? ""} />
-    </StrictMode>,
-  );
-} else if (view === "pin") {
-  root.render(
-    <StrictMode>
-      <PinWindow pinId={params.get("pinId") ?? ""} />
-    </StrictMode>,
-  );
-} else {
-  root.render(
-    <StrictMode>
-      <App />
+      <PluginErrorBoundary pluginId={pluginId}>
+        <ViewComponent params={params} />
+      </PluginErrorBoundary>
     </StrictMode>,
   );
 }
 
+void boot();

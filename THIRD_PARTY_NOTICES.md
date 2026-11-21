@@ -14,3 +14,13 @@ The integration includes adapted device protocol drivers, polling and history
 logic, Windows battery discovery helpers, and selected UI concepts. The JZ M7
 receiver driver and the local integration changes are maintained in this
 project.
+
+## exifr
+
+The media organizer reads photo capture times (EXIF metadata) with exifr:
+
+https://github.com/MikeKovarik/exifr
+
+exifr is Copyright (c) 2020 Mike Kovařík, Mutiny.cz and licensed under the
+MIT License. The complete license text is included at
+`licenses/exifr-MIT.txt`.

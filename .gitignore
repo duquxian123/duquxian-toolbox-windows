@@ -23,4 +23,4 @@ Thumbs.db
 
 
 zctemp/
-resources/battery/system-batteries.exe
+src/plugins/battery/resources/system-batteries.exe

@@ -1,8 +1,52 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 
 export async function ensureDirectory(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
+}
+
+export async function moveDirectoryIfMissing(
+  source: string,
+  destination: string,
+): Promise<void> {
+  try {
+    if (!(await stat(source)).isDirectory()) {
+      return;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  try {
+    await stat(destination);
+    return;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  await ensureDirectory(dirname(destination));
+  try {
+    await rename(source, destination);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") {
+      throw error;
+    }
+    await cp(source, destination, { recursive: true });
+    await rm(source, { recursive: true, force: true });
+  }
 }
 
 export async function readJson<T>(path: string): Promise<T | null> {

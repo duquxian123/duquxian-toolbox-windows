@@ -1,10 +1,9 @@
-import type { ToolboxApi } from "../../shared/types";
+import type { CoreToolboxApi } from "../../shared/types";
 
 declare global {
   interface Window {
-    toolbox: ToolboxApi;
+    toolbox: CoreToolboxApi;
   }
 }
 
 export {};
-

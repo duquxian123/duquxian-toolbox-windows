@@ -11,12 +11,16 @@
     "resolveJsonModule": true,
     "types": [
       "node",
-      "electron-vite/node"
+      "electron-vite/node",
+      "vite/client"
     ],
     "baseUrl": ".",
     "paths": {
       "@shared/*": [
         "src/shared/*"
+      ],
+      "@plugins/*": [
+        "src/plugins/*"
       ]
     }
   },
@@ -25,6 +29,11 @@
     "src/main/**/*.ts",
     "src/preload/**/*.ts",
     "src/shared/**/*.ts",
+    "src/plugins/*/plugin.ts",
+    "src/plugins/*/main/**/*.ts",
+    "src/plugins/*/preload/**/*.ts",
+    "src/plugins/*/shared/**/*.ts",
+    "src/plugins/*/tests/**/*.ts",
     "src/renderer/src/env.d.ts",
     "tests/**/*.ts"
   ]

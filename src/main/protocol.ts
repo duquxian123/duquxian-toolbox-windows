@@ -2,6 +2,7 @@ import { net, protocol } from "electron";
 import { extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertPathWithin } from "./fs-utils";
+import type { MediaRegistry } from "./media-registry";
 
 const mimeTypes: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -30,8 +31,7 @@ export function registerToolboxScheme(): void {
 
 export function installToolboxProtocol(options: {
   rendererRoot: string;
-  sessionsRoot: string;
-  pinsRoot: string;
+  media: MediaRegistry;
 }): void {
   protocol.handle("toolbox", async (request) => {
     try {
@@ -40,19 +40,17 @@ export function installToolboxProtocol(options: {
       if (url.hostname === "app") {
         const relativePath =
           decodeURIComponent(url.pathname).replace(/^\/+/, "") || "index.html";
-        filePath = assertPathWithin(options.rendererRoot, join(options.rendererRoot, relativePath));
+        filePath = assertPathWithin(
+          options.rendererRoot,
+          join(options.rendererRoot, relativePath),
+        );
       } else if (url.hostname === "media") {
         const pathname = decodeURIComponent(url.pathname).replace(/^\/+/, "");
         const [source, id, filename, ...rest] = pathname.split("/");
         if (!source || !id || !filename || rest.length > 0) {
           return new Response("Bad Request", { status: 400 });
         }
-        const root =
-          source === "capture"
-            ? options.sessionsRoot
-            : source === "pins"
-              ? options.pinsRoot
-              : null;
+        const root = options.media.get(source);
         if (!root) {
           return new Response("Not Found", { status: 404 });
         }
@@ -91,4 +89,3 @@ export function installToolboxProtocol(options: {
     }
   });
 }
-

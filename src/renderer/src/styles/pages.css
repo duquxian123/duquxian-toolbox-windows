@@ -30,79 +30,6 @@
   gap: 8px;
 }
 
-.heading-shortcut {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--faint);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.quick-card {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  color: var(--ink);
-  text-align: left;
-  transition: border-color 140ms ease;
-}
-
-.quick-card:hover {
-  border-color: var(--line-strong);
-}
-
-.quick-icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--surface-muted);
-  color: var(--muted);
-}
-
-.quick-card > span:nth-child(2) {
-  min-width: 0;
-  flex: 1;
-}
-
-.quick-card strong,
-.quick-card small {
-  display: block;
-}
-
-.quick-card strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.quick-card small {
-  margin-top: 3px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.card-chevron {
-  flex: 0 0 auto;
-  color: var(--faint);
-}
-
 .settings-page {
   max-width: 920px;
 }
@@ -169,6 +96,57 @@
   font-size: 12px;
 }
 
+.plugin-error-card,
+.plugin-loading-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.plugin-error-card {
+  max-width: 760px;
+}
+
+.plugin-error-card.compact {
+  margin-bottom: 8px;
+  padding: 12px;
+}
+
+.plugin-error-card > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.plugin-error-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.plugin-error-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.plugin-loading-card {
+  color: var(--muted);
+}
+
+.plugin-boundary-content {
+  display: contents;
+}
+
 @media (max-width: 820px) {
   .page-heading {
     align-items: flex-start;
@@ -176,17 +154,9 @@
     gap: 12px;
   }
 
-  .quick-grid {
-    grid-template-columns: 1fr;
-  }
-
   .settings-row {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
-  }
-
-  .directory-button {
-    width: 100%;
   }
 }

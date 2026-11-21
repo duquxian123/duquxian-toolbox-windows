@@ -73,11 +73,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-:root[data-window-view="capture"] body,
-:root[data-window-view="capture"] #root {
-  background: transparent;
-}
-
 button,
 input,
 select,
@@ -269,52 +264,6 @@ kbd {
   outline: 0;
   background: transparent;
   font-size: 13px;
-}
-
-.hotkey-input {
-  min-width: 180px;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.hotkey-input.recording {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.directory-button {
-  display: flex;
-  width: min(390px, 52%);
-  height: 36px;
-  min-width: 220px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 11px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 12px;
-  text-align: left;
-}
-
-.directory-button span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.directory-button:hover {
-  border-color: var(--line-strong);
-  color: var(--ink);
 }
 
 .select-control {
