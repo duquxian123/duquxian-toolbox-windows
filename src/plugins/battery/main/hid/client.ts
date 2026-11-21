@@ -1,4 +1,4 @@
-import { utilityProcess } from "electron";
+import { app, utilityProcess } from "electron";
 import { join } from "node:path";
 import type {
   BatteryCalibrationFrame,
@@ -7,8 +7,12 @@ import type {
 } from "../../shared/types";
 import type { BatteryLogicalDevice } from "./catalog";
 
-const WORKER = join(__dirname, "battery-worker.js");
+const WORKER = join(app.getAppPath(), "out", "main", "battery-worker.js");
 const WORKER_EXITED = "battery hid worker exited";
+
+function workerExited(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith(WORKER_EXITED);
+}
 
 type Pending = {
   resolve(value: unknown): void;
@@ -19,6 +23,7 @@ type Pending = {
 export class BatteryHidClient {
   private child: Electron.UtilityProcess | null = null;
   private sequence = 0;
+  private workerError = "";
   private readonly pending = new Map<number, Pending>();
 
   enumerate(): Promise<BatteryLogicalDevice[]> {
@@ -34,7 +39,7 @@ export class BatteryHidClient {
     try {
       return await read() as BatteryReading;
     } catch (error) {
-      if (error instanceof Error && error.message === WORKER_EXITED) {
+      if (workerExited(error)) {
         return await read() as BatteryReading;
       }
       throw error;
@@ -56,8 +61,12 @@ export class BatteryHidClient {
   }
 
   private spawn(): void {
-    const child = utilityProcess.fork(WORKER, [], { stdio: "ignore" });
+    const child = utilityProcess.fork(WORKER, [], { stdio: "pipe" });
     this.child = child;
+    this.workerError = "";
+    child.stderr?.on("data", (chunk: Buffer) => {
+      this.workerError = `${this.workerError}${chunk.toString()}`.slice(-2000);
+    });
     child.on("message", (message: unknown) => {
       const response = message as { id?: number; ok?: boolean; result?: unknown; error?: string };
       if (typeof response.id !== "number") return;
@@ -68,10 +77,13 @@ export class BatteryHidClient {
       if (response.ok) pending.resolve(response.result);
       else pending.reject(new Error(response.error || "battery HID request failed"));
     });
-    child.on("exit", () => {
+    child.on("exit", (code) => {
       if (this.child !== child) return;
       this.child = null;
-      this.rejectAll(WORKER_EXITED);
+      const detail = this.workerError.trim();
+      this.rejectAll(
+        `${WORKER_EXITED} (${code})${detail ? `: ${detail}` : ""}`,
+      );
     });
   }
 
