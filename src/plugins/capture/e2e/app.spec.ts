@@ -98,6 +98,43 @@ test("launches and completes a region screenshot", async () => {
       await mainPage.evaluate(() => "plugins" in window),
     ).toBe(false);
 
+    const edgeOverlayPromise = electronApp.waitForEvent("window");
+    await mainPage.evaluate(() =>
+      window.toolbox.invokePlugin("capture", "start", { mode: "region" }),
+    );
+    const edgeOverlay = await edgeOverlayPromise;
+    await edgeOverlay.locator(".capture-overlay").waitFor({ state: "visible" });
+    await edgeOverlay.mouse.move(viewport.width - 520, 180);
+    await edgeOverlay.mouse.down();
+    await edgeOverlay.mouse.move(viewport.width - 8, 680, { steps: 8 });
+    await edgeOverlay.mouse.up();
+    await expect(edgeOverlay.locator(".annotation-toolbar")).toBeVisible();
+    await expect
+      .poll(() =>
+        edgeOverlay.evaluate(() => {
+          const toolbar = document
+            .querySelector(".annotation-toolbar")
+            ?.getBoundingClientRect();
+          return toolbar ? toolbar.right : Number.POSITIVE_INFINITY;
+        }),
+      )
+      .toBeLessThanOrEqual(viewport.width);
+    const edgeBounds = await edgeOverlay.evaluate(() => {
+      const toolbar = document
+        .querySelector(".annotation-toolbar")
+        ?.getBoundingClientRect();
+      return toolbar ? { left: toolbar.left, right: toolbar.right } : null;
+    });
+    expect(edgeBounds).not.toBeNull();
+    expect(edgeBounds?.left).toBeGreaterThanOrEqual(0);
+    expect(edgeBounds?.right).toBeLessThanOrEqual(viewport.width);
+    await expect(edgeOverlay.getByRole("button", { name: /保存/ })).toBeVisible();
+    await expect(edgeOverlay.getByRole("button", { name: /贴图/ })).toBeVisible();
+    await expect(edgeOverlay.getByRole("button", { name: /复制/ })).toBeVisible();
+    await expect(edgeOverlay.locator(".toolbar-close")).toBeVisible();
+    await edgeOverlay.locator(".toolbar-close").click();
+    await expect.poll(async () => edgeOverlay.isClosed()).toBe(true);
+
     const repeatOverlayPromise = electronApp.waitForEvent("window");
     await mainPage.evaluate(() =>
       window.toolbox.invokePlugin("capture", "start", { mode: "repeat" }),

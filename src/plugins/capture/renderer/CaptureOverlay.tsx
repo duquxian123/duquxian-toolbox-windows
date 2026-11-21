@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -64,8 +65,10 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
   const [textPoint, setTextPoint] = useState<Point | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toolbarWidth, setToolbarWidth] = useState(0);
   const clickTimer = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const autoCopyStarted = useRef(false);
 
   useEffect(() => {
@@ -106,6 +109,18 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     setHoverWindow(currentWindow);
   }, [currentWindow]);
+
+  useLayoutEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) {
+      return;
+    }
+    const updateWidth = () => setToolbarWidth(toolbar.offsetWidth);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(toolbar);
+    return () => observer.disconnect();
+  }, [phase]);
 
   useEffect(() => {
     if (!session || !selection || !images.size || !canvasRef.current) {
@@ -457,7 +472,7 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
   const toolbarLeft = Math.max(
     12,
     Math.min(
-      session.virtualBounds.width - 650,
+      session.virtualBounds.width - toolbarWidth - 12,
       selection ? selection.x + selection.width - 480 : 12,
     ),
   );
@@ -639,6 +654,7 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
           </div>
 
           <div
+            ref={toolbarRef}
             className="annotation-toolbar"
             style={{ left: toolbarLeft, top: toolbarTop }}
             onPointerDown={(event) => event.stopPropagation()}
