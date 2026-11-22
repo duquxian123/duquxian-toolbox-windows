@@ -15,6 +15,7 @@ import {
   ensureDirectory,
   readJson,
 } from "../../../main/fs-utils";
+import type { Logger } from "../../../main/logger";
 import type { PluginWindowSpec } from "../../../main/plugin/types";
 import type { PluginMediaSource } from "../../../main/plugin/types";
 import { nextAvailableFilename } from "../shared/filename";
@@ -49,7 +50,7 @@ interface SessionRecord {
 }
 
 export interface CaptureWindowHost {
-  hideMain(): void;
+  getMain(): BrowserWindow | null;
   create(spec: PluginWindowSpec): Promise<BrowserWindow>;
   close(window: BrowserWindow): void;
 }
@@ -73,6 +74,7 @@ export class CaptureService {
     private readonly onPin: (pin: PinInfo) => Promise<PinInfo>,
     private readonly sessionMedia: PluginMediaSource,
     private readonly pinMedia: PluginMediaSource,
+    private readonly logger: Logger,
   ) {
     this.statePath = join(userDataPath, "capture-state.json");
   }
@@ -110,12 +112,10 @@ export class CaptureService {
       throw new Error("已有截图正在进行");
     }
 
-    this.windows.hideMain();
-    await delay(100);
-
     const sessionId = randomUUID();
     const sessionDirectory = join(this.userDataPath, "sessions", sessionId);
     await ensureDirectory(sessionDirectory);
+    this.logger.info("开始截图", { mode, sessionId });
 
     try {
       const displays = screen.getAllDisplays();
@@ -166,6 +166,13 @@ export class CaptureService {
       }
 
       const windows = this.readWindows(virtualBounds);
+      const mainTitle = this.windows.getMain()?.getTitle();
+      this.logger.info("截图窗口候选已生成", {
+        windowCount: windows.length,
+        ownWindowIncluded: mainTitle
+          ? windows.some((window) => window.title === mainTitle)
+          : false,
+      });
       const cursorPoint = screen.getCursorScreenPoint();
       const cursorVisible = this.nativeWindows.cursorVisible();
       const settings = this.settings.get();
@@ -250,6 +257,7 @@ export class CaptureService {
       }
     } catch (error) {
       await rm(sessionDirectory, { recursive: true, force: true });
+      this.logger.error("截图启动失败", { mode, sessionId, error });
       throw error;
     }
   }
@@ -278,6 +286,12 @@ export class CaptureService {
 
     const createdAt = new Date();
     const settings = this.settings.get();
+    this.logger.info("提交截图", {
+      sessionId: request.sessionId,
+      operation: request.operation,
+      width: request.width,
+      height: request.height,
+    });
     let savedPath: string | undefined;
     let pinId: string | undefined;
     let pinDirectory: string | undefined;
@@ -329,11 +343,22 @@ export class CaptureService {
       if (savedPath && existsSync(savedPath)) {
         await rm(savedPath, { force: true });
       }
+      this.logger.error("截图处理失败", {
+        sessionId: request.sessionId,
+        operation: request.operation,
+        error,
+      });
       throw error;
     }
 
     await this.rememberSelection(record.session, request.selection);
     await this.finishSession(request.sessionId);
+    this.logger.info("截图处理完成", {
+      sessionId: request.sessionId,
+      operation: request.operation,
+      saved: Boolean(savedPath),
+      pinned: Boolean(pinId),
+    });
     return {
       operation: request.operation,
       savedPath,
@@ -346,6 +371,7 @@ export class CaptureService {
     if (!record) {
       return;
     }
+    this.logger.info("取消截图", { sessionId });
     record.closing = true;
     this.closeOverlay();
     this.sessions.delete(sessionId);
@@ -376,7 +402,7 @@ export class CaptureService {
 
   private readWindows(virtualBounds: Rectangle): WindowTarget[] {
     return this.nativeWindows
-      .listTopLevelWindows()
+      .listTopLevelWindows({ includeCurrentProcess: true })
       .filter((window) => intersectRects(window.globalBounds, virtualBounds))
       .map((window) => ({
         ...window,
@@ -541,8 +567,4 @@ function validateCommitRequest(request: CommitRequest): void {
   ) {
     throw new Error("截图数据为空或过大");
   }
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

@@ -19,5 +19,10 @@ export function frameToReading(
   const raw = frame[profile.byteOffset];
   if (typeof raw !== "number") return null;
   if (frame.slice(1).every((byte) => byte === 0)) return null;
-  return { capacity: toPercent(raw, profile), charging: null, voltageMv: null };
+  return {
+    capacity: toPercent(raw, profile),
+    charging: null,
+    voltageMv: null,
+    raw: frame.slice(),
+  };
 }

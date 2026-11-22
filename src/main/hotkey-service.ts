@@ -1,23 +1,36 @@
 import { globalShortcut } from "electron";
 import { buildHotkeyCandidates } from "../shared/hotkey";
+import type { Logger } from "./logger";
 
 export class HotkeyService {
   private readonly registered = new Map<string, () => void>();
+
+  constructor(private readonly logger: Logger) {}
 
   register(
     accelerator: string,
     handler: () => void,
   ): { ok: boolean; error?: string } {
     try {
-      if (!globalShortcut.register(accelerator, handler)) {
+      const onTriggered = () => {
+        this.logger.info("全局快捷键触发", { accelerator });
+        handler();
+      };
+      if (!globalShortcut.register(accelerator, onTriggered)) {
+        this.logger.warn("全局快捷键注册失败", {
+          accelerator,
+          reason: "globalShortcut.register returned false",
+        });
         return {
           ok: false,
           error: `无法注册快捷键 ${accelerator}，可能已被其他程序占用`,
         };
       }
-      this.registered.set(accelerator, handler);
+      this.registered.set(accelerator, onTriggered);
+      this.logger.info("全局快捷键注册成功", { accelerator });
       return { ok: true };
     } catch (error) {
+      this.logger.error("全局快捷键注册异常", { accelerator, error });
       return {
         ok: false,
         error: `快捷键 ${accelerator} 无效：${
@@ -34,14 +47,17 @@ export class HotkeyService {
     }
     try {
       if (!globalShortcut.register(accelerator, () => {})) {
+        this.logger.warn("全局快捷键探测失败", { accelerator });
         return {
           ok: false,
           error: `快捷键 ${accelerator} 已被其他程序或系统占用`,
         };
       }
       globalShortcut.unregister(accelerator);
+      this.logger.info("全局快捷键探测通过", { accelerator });
       return { ok: true };
     } catch (error) {
+      this.logger.error("全局快捷键探测异常", { accelerator, error });
       return {
         ok: false,
         error: `快捷键 ${accelerator} 无效：${
@@ -77,9 +93,13 @@ export class HotkeyService {
     }
     globalShortcut.unregister(accelerator);
     this.registered.delete(accelerator);
+    this.logger.info("全局快捷键已注销", { accelerator });
   }
 
   unregisterAll(): void {
+    this.logger.info("注销全部全局快捷键", {
+      accelerators: [...this.registered.keys()],
+    });
     globalShortcut.unregisterAll();
     this.registered.clear();
   }

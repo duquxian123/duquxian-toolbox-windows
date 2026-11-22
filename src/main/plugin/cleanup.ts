@@ -1,5 +1,6 @@
 import { readdir, rm } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import type { Logger } from "../logger";
 
 /**
  * 删除已从构建中发现列表中消失的插件数据。
@@ -8,6 +9,7 @@ import { join, resolve, sep } from "node:path";
 export async function removeOrphanPluginData(
   pluginsRoot: string,
   knownIds: ReadonlySet<string>,
+  logger: Logger | null = null,
 ): Promise<void> {
   const root = resolve(pluginsRoot);
   let entries;
@@ -31,6 +33,10 @@ export async function removeOrphanPluginData(
     try {
       await rm(target, { recursive: true, force: true });
     } catch (error) {
+      logger?.error("插件遗留数据清理失败", {
+        pluginId: entry.name,
+        error,
+      });
       console.error(`插件 ${entry.name} 的遗留数据清理失败`, error);
     }
   }

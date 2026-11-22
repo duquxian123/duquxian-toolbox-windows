@@ -1,8 +1,9 @@
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import type { CoreSettings, ThemeMode } from "@shared/types";
 import { PluginErrorBoundary } from "../components/PluginErrorBoundary";
 import type { Notify, PluginPageProps } from "../plugin/types";
 import { errorMessage } from "../utils";
+import { LogViewer } from "./LogViewer";
 
 export function SettingsPage({
   version,
@@ -21,6 +22,8 @@ export function SettingsPage({
     Section: ComponentType<PluginPageProps>;
   }>;
 }) {
+  const [logsOpen, setLogsOpen] = useState(false);
+
   const update = async (
     patch: Partial<CoreSettings>,
     success = "设置已保存",
@@ -72,6 +75,24 @@ export function SettingsPage({
         </div>
       </section>
 
+      <section className="settings-group">
+        <h2 className="settings-group-title">诊断</h2>
+        <div className="settings-list">
+          <div className="settings-row">
+            <div>
+              <strong>运行日志</strong>
+              <p>在界面查看最近日志，并一键复制发给开发者。</p>
+            </div>
+            <button
+              className="action secondary"
+              onClick={() => setLogsOpen(true)}
+            >
+              查看日志
+            </button>
+          </div>
+        </div>
+      </section>
+
       {pluginSections.map((plugin) => {
         const Section = plugin.Section;
         return (
@@ -113,6 +134,13 @@ export function SettingsPage({
           </div>
         </div>
       </section>
+
+      {logsOpen && (
+        <LogViewer
+          notify={notify}
+          onClose={() => setLogsOpen(false)}
+        />
+      )}
     </div>
   );
 }

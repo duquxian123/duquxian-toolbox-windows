@@ -17,6 +17,9 @@ test("launches and completes a region screenshot", async () => {
 
   try {
     const mainPage = await electronApp.firstWindow();
+    await mainPage
+      .getByRole("button", { name: "截图", exact: true })
+      .click();
     await expect(mainPage.getByRole("button", { name: /开始截图/ }).first()).toBeVisible();
 
     const overlayPromise = electronApp.waitForEvent("window");
@@ -34,6 +37,15 @@ test("launches and completes a region screenshot", async () => {
     });
     await overlay.waitForLoadState("domcontentloaded");
     await expect(overlay.locator(".capture-overlay")).toBeVisible();
+    expect(
+      await electronApp.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().some(
+          (window) =>
+            window.isVisible() &&
+            !window.webContents.getURL().includes("sessionId="),
+        ),
+      ),
+    ).toBe(true);
     const firstSession = await overlay.evaluate(
       (id) =>
         window.toolbox.invokePlugin("capture", "get-session", {
@@ -41,6 +53,11 @@ test("launches and completes a region screenshot", async () => {
         }),
       new URL(overlay.url()).searchParams.get("sessionId") ?? "",
     );
+    expect(
+      firstSession.windows.some(
+        (window: { title: string }) => window.title === "独去闲工具箱",
+      ),
+    ).toBe(true);
     const viewport = await overlay.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
@@ -164,13 +181,24 @@ test("launches and completes a region screenshot", async () => {
       sessionId,
     );
     expect(captureSession.windows.length).toBeGreaterThan(0);
-    await windowOverlay.mouse.move(500, 300);
+    const ownWindow = captureSession.windows.find(
+      (window: { title: string }) => window.title === "独去闲工具箱",
+    );
+    expect(ownWindow).toBeDefined();
+    const ownCenter = {
+      x: ownWindow.localBounds.x + ownWindow.localBounds.width / 2,
+      y: ownWindow.localBounds.y + ownWindow.localBounds.height / 2,
+    };
+    await windowOverlay.mouse.move(ownCenter.x, ownCenter.y);
     await windowOverlay.waitForTimeout(300);
     await windowOverlay.screenshot({ path: "test-results/window-hover.png" });
     await expect(windowOverlay.locator(".window-highlight")).toBeVisible();
+    await expect(windowOverlay.locator(".window-highlight span")).toHaveText(
+      "独去闲工具箱",
+    );
     expect(await windowOverlay.locator(".capture-dim").count()).toBe(0);
     expect(await windowOverlay.locator(".shade").count()).toBe(4);
-    await windowOverlay.mouse.click(500, 300);
+    await windowOverlay.mouse.click(ownCenter.x, ownCenter.y);
     await expect(windowOverlay.locator(".annotation-toolbar")).toBeVisible();
     await windowOverlay.locator(".toolbar-close").click();
     await expect.poll(async () => windowOverlay.isClosed()).toBe(true);

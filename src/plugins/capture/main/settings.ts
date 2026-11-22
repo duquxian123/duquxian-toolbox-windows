@@ -2,6 +2,7 @@ import { app } from "electron";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicJsonWrite, readJson } from "../../../main/fs-utils";
+import type { Logger } from "../../../main/logger";
 import {
   createDefaultCaptureSettings,
   isValidHotkey,
@@ -17,12 +18,16 @@ export class CaptureSettingsStore {
   private constructor(
     rootDir: string,
     settings: CaptureSettings,
+    private readonly logger: Logger | null,
   ) {
     this.filePath = join(rootDir, "settings.json");
     this.settings = settings;
   }
 
-  static async create(rootDir: string): Promise<CaptureSettingsStore> {
+  static async create(
+    rootDir: string,
+    logger: Logger | null = null,
+  ): Promise<CaptureSettingsStore> {
     const defaults = createDefaultCaptureSettings(
       join(app.getPath("pictures"), "独去闲工具箱截图"),
     );
@@ -31,6 +36,7 @@ export class CaptureSettingsStore {
     try {
       stored = await readJson<unknown>(join(rootDir, "settings.json"));
     } catch (error) {
+      logger?.warn("截图设置读取失败，将使用默认设置", { error });
       console.warn("截图设置读取失败，将使用默认设置", error);
     }
     let migrated = false;
@@ -48,6 +54,7 @@ export class CaptureSettingsStore {
     const store = new CaptureSettingsStore(
       rootDir,
       sanitizeCaptureSettings(stored, defaults),
+      logger,
     );
     await store.persist();
     if (migrated) {
@@ -80,6 +87,7 @@ export class CaptureSettingsStore {
 
     this.settings = sanitizeCaptureSettings(candidate, this.settings);
     await this.persist();
+    this.logger?.info("截图设置已保存", { keys: Object.keys(patch) });
     return this.get();
   }
 

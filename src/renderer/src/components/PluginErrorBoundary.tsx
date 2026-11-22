@@ -52,6 +52,20 @@ export class PluginErrorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
+    void window.toolbox
+      .reportLog("error", `插件 ${this.props.pluginId} 渲染失败`, {
+        pluginId: this.props.pluginId,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : String(error),
+        componentStack: info.componentStack,
+      })
+      .catch(() => undefined);
     console.error(`插件 ${this.props.pluginId} 渲染失败`, error, info);
   }
 

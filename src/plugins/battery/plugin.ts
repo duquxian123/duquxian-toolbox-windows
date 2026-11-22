@@ -2,6 +2,6 @@ import type { PluginMeta } from "../../shared/plugin";
 
 export const meta: PluginMeta = {
   id: "battery",
-  order: 20,
+  order: 0,
   navTitle: "Battery Hub",
 };

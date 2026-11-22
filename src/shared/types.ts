@@ -1,6 +1,7 @@
 import type { PluginRuntimeInfo } from "./plugin";
 
 export type ThemeMode = "system" | "light" | "dark";
+export type LogLevel = "info" | "warn" | "error";
 
 /** 框架级设置：与具体插件无关。 */
 export interface CoreSettings {
@@ -14,6 +15,13 @@ export interface AppBootstrap {
   platform: string;
   version: string;
   plugins: PluginRuntimeInfo[];
+}
+
+export interface AppLogSnapshot {
+  content: string;
+  filePath: string;
+  truncated: boolean;
+  updatedAt: number | null;
 }
 
 export interface Point {
@@ -33,6 +41,8 @@ export interface CoreToolboxApi {
   updateSettings(patch: Partial<CoreSettings>): Promise<CoreSettings>;
   showMainWindow(section?: string): Promise<void>;
   quit(): Promise<void>;
+  getLogs(): Promise<AppLogSnapshot>;
+  reportLog(level: LogLevel, message: string, data?: unknown): Promise<void>;
   onNavigate(callback: (section: string) => void): () => void;
   invokePlugin<T>(
     pluginId: string,

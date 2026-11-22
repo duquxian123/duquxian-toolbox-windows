@@ -63,11 +63,18 @@ function readId(payload: unknown): string {
 export default {
   async setup(pluginCtx) {
     ctx = pluginCtx;
-    store = await BatteryStore.create(pluginCtx.userDataDir);
+    store = await BatteryStore.create(
+      pluginCtx.userDataDir,
+      pluginCtx.log.child("store"),
+    );
     const notifier = new BatteryNotifier(store, () => {
       void ctx.windows.showMain("battery");
     });
-    manager = new BatteryManager(store, notifier);
+    manager = new BatteryManager(
+      store,
+      notifier,
+      pluginCtx.log.child("manager"),
+    );
     manager.setListeners(
       (device) => {
         ctx.ipc.send("update", device);
@@ -100,13 +107,21 @@ export default {
         manufacturer: request.manufacturer,
         hidden: false,
       });
+      ctx.log.info("电量设备已添加", {
+        deviceId: request.id,
+        product: request.product,
+        manufacturer: request.manufacturer,
+        driverId: request.driverId,
+      });
       manager.restart();
       ctx.tray.refresh();
       return device;
     });
 
     ctx.ipc.handle("remove", (payload) => {
-      store.removeDevice(readId(payload));
+      const id = readId(payload);
+      store.removeDevice(id);
+      ctx.log.info("电量设备已移除", { deviceId: id });
       manager.restart();
       ctx.tray.refresh();
     });
@@ -118,6 +133,10 @@ export default {
       }
       const device = store.upsertDevice(id, {
         customName: name.trim().slice(0, 40) || null,
+      });
+      ctx.log.info("电量设备已重命名", {
+        deviceId: id,
+        name: device.customName,
       });
       manager.restart();
       ctx.tray.refresh();
@@ -133,7 +152,9 @@ export default {
         typeof icon === "string"
           ? Array.from(icon).slice(0, 4).join("").trim() || null
           : null;
-      return store.upsertDevice(id, { customIcon });
+      const device = store.upsertDevice(id, { customIcon });
+      ctx.log.info("电量设备图标已更新", { deviceId: id });
+      return device;
     });
 
     ctx.ipc.handle("set-hidden", (payload) => {
@@ -142,6 +163,10 @@ export default {
         throw new Error("设备参数无效");
       }
       const device = store.upsertDevice(id, { hidden: !!hidden });
+      ctx.log.info("电量设备显示状态已更新", {
+        deviceId: id,
+        hidden: device.hidden,
+      });
       manager.restart();
       ctx.tray.refresh();
       return device;
@@ -172,12 +197,20 @@ export default {
     });
 
     ctx.ipc.handle("poll-now", async () => {
+      ctx.log.info("手动刷新电量");
       await manager.pollNow();
     });
 
-    ctx.ipc.handle("capture", (payload) =>
-      manager.captureCalibration(readId(payload)),
-    );
+    ctx.ipc.handle("capture", async (payload) => {
+      const id = readId(payload);
+      ctx.log.info("开始捕获电量校准报文", { deviceId: id });
+      const frames = await manager.captureCalibration(id);
+      ctx.log.info("电量校准报文捕获完成", {
+        deviceId: id,
+        frameCount: frames.length,
+      });
+      return frames;
+    });
 
     ctx.ipc.handle("get-settings", () => store.getSettings());
 
@@ -186,20 +219,31 @@ export default {
         throw new Error("电量设置无效");
       }
       const updated = manager.updateSettings(payload as Partial<BatterySettings>);
+      ctx.log.info("电量设置已更新", { keys: Object.keys(payload) });
       ctx.tray.refresh();
       return updated;
     });
 
-    ctx.ipc.handle("diagnostics", () => manager.diagnostics());
+    ctx.ipc.handle("diagnostics", async () => {
+      ctx.log.info("开始电量诊断");
+      const result = await manager.diagnostics();
+      ctx.log.info("电量诊断完成", {
+        verdict: result.verdict.tone,
+        checks: result.checks,
+      });
+      return result;
+    });
 
     ctx.tray.contribute(traySection);
   },
 
   async start() {
+    ctx.log.info("Battery Hub 已启动");
     await manager.start();
   },
 
   async stop() {
+    ctx.log.info("Battery Hub 正在停止");
     await manager?.stop();
   },
 } satisfies PluginMainModule;

@@ -28,6 +28,9 @@ const api: CoreToolboxApi = {
   showMainWindow: (section?: string) =>
     ipcRenderer.invoke("app:show-main", section),
   quit: () => ipcRenderer.invoke("app:quit"),
+  getLogs: () => ipcRenderer.invoke("toolbox:get-logs"),
+  reportLog: (level, message, data) =>
+    ipcRenderer.invoke("toolbox:report-log", { level, message, data }),
   onNavigate: (callback: (section: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, section: string) => {
       callback(section);

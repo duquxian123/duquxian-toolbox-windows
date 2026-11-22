@@ -18,6 +18,28 @@ const view = params.get("view");
 document.documentElement.dataset.windowView = view ?? "main";
 const root = createRoot(document.getElementById("root")!);
 
+window.addEventListener("error", (event) => {
+  void window.toolbox
+    .reportLog("error", "渲染器未捕获异常", {
+      view,
+      message: event.message,
+      filename: event.filename,
+      line: event.lineno,
+      column: event.colno,
+      error: describeError(event.error),
+    })
+    .catch(() => undefined);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  void window.toolbox
+    .reportLog("error", "渲染器 Promise 未处理拒绝", {
+      view,
+      error: describeError(event.reason),
+    })
+    .catch(() => undefined);
+});
+
 async function boot(): Promise<void> {
   await loadPluginModules();
   const ViewComponent = view ? pluginViews[view] : undefined;
@@ -52,3 +74,13 @@ async function boot(): Promise<void> {
 }
 
 void boot();
+
+function describeError(error: unknown): unknown {
+  return error instanceof Error
+    ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      }
+    : String(error);
+}

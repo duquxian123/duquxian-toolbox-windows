@@ -56,42 +56,12 @@ export function HomePage({ notify }: { notify: Notify }) {
           <span className="heading-shortcut">
             <kbd>{hotkey}</kbd>
           </span>
-          <button
-            className="action secondary"
-            onClick={() => void startCapture("repeat")}
-          >
-            <Icon name="repeat" size={16} />
-            重复上次选区
-          </button>
           <button className="action primary" onClick={() => void startCapture("region")}>
             <Icon name="camera" size={16} />
             开始截图
           </button>
         </div>
       </header>
-
-      <div className="quick-grid">
-        <button className="quick-card" onClick={() => void startCapture("fullscreen")}>
-          <span className="quick-icon">
-            <Icon name="monitor" />
-          </span>
-          <span>
-            <strong>当前显示器</strong>
-            <small>鼠标所在屏幕</small>
-          </span>
-          <Icon name="chevron" className="card-chevron" />
-        </button>
-        <button className="quick-card" onClick={() => void startCapture("repeat")}>
-          <span className="quick-icon">
-            <Icon name="repeat" />
-          </span>
-          <span>
-            <strong>上次选区</strong>
-            <small>沿用最近范围</small>
-          </span>
-          <Icon name="chevron" className="card-chevron" />
-        </button>
-      </div>
 
       <CaptureSettingsSection notify={notify} onSettingsChange={setSettings} />
     </div>

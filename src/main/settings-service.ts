@@ -6,22 +6,27 @@ import {
 } from "../shared/settings";
 import type { CoreSettings } from "../shared/types";
 import { atomicJsonWrite, readJson } from "./fs-utils";
+import type { Logger } from "./logger";
 
 export class SettingsService {
   readonly filePath = join(app.getPath("userData"), "app-settings.json");
   private settings: CoreSettings;
 
-  private constructor(settings: CoreSettings) {
+  private constructor(
+    settings: CoreSettings,
+    private readonly logger: Logger | null,
+  ) {
     this.settings = settings;
   }
 
-  static async create(): Promise<SettingsService> {
+  static async create(logger: Logger | null = null): Promise<SettingsService> {
     const defaults = createDefaultCoreSettings();
     const userData = app.getPath("userData");
     let stored: unknown = null;
     try {
       stored = await readJson<unknown>(join(userData, "app-settings.json"));
     } catch (error) {
+      logger?.warn("应用设置读取失败，将使用默认设置", { error });
       console.warn("应用设置读取失败，将使用默认设置", error);
     }
 
@@ -34,7 +39,10 @@ export class SettingsService {
       }
     }
 
-    const service = new SettingsService(sanitizeCoreSettings(stored, defaults));
+    const service = new SettingsService(
+      sanitizeCoreSettings(stored, defaults),
+      logger,
+    );
     await service.persist();
     return service;
   }
@@ -54,5 +62,9 @@ export class SettingsService {
 
   private async persist(): Promise<void> {
     await atomicJsonWrite(this.filePath, this.settings);
+    this.logger?.info("应用设置已保存", {
+      theme: this.settings.theme,
+      launchAtLogin: this.settings.launchAtLogin,
+    });
   }
 }

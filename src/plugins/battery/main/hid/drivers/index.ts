@@ -7,6 +7,7 @@ import * as tabled from "./tabled";
 import * as audeze from "./audeze";
 import * as razer from "./razer";
 import * as playstation from "./playstation";
+import * as mosart from "./mosart";
 import * as hidpp from "./hidpp";
 import * as generic from "./generic";
 import type { BatteryDriver } from "./types";
@@ -26,6 +27,7 @@ const knownDrivers = [
   audeze,
   razer,
   playstation,
+  mosart,
   hidpp,
 ] as unknown as BatteryDriver[];
 

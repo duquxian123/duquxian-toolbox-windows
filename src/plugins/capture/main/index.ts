@@ -1,6 +1,7 @@
 import { app, dialog, Notification } from "electron";
 import { join } from "node:path";
 import { moveDirectoryIfMissing } from "../../../main/fs-utils";
+import type { Logger } from "../../../main/logger";
 import type { PluginContext, PluginMainModule } from "../../../main/plugin/types";
 import { CaptureService } from "./capture-service";
 import { PinManager } from "./pins";
@@ -16,10 +17,12 @@ import type {
 let service: CaptureService;
 let settings: CaptureSettingsStore;
 let pins: PinManager;
+let pluginLog: Logger | null = null;
 let hotkeyError: string | null = null;
 
 export default {
   async setup(ctx) {
+    pluginLog = ctx.log;
     const userDataPath = ctx.userDataDir;
     const sessionsRoot = join(userDataPath, "sessions");
     const pinsRoot = join(userDataPath, "pins");
@@ -27,13 +30,13 @@ export default {
     await moveDirectoryIfMissing(join(legacyRoot, "sessions"), sessionsRoot);
     await moveDirectoryIfMissing(join(legacyRoot, "pins"), pinsRoot);
 
-    settings = await CaptureSettingsStore.create(userDataPath);
+    settings = await CaptureSettingsStore.create(userDataPath, ctx.log);
     pins = new PinManager(ctx);
     const sessionMedia = ctx.media.registerSource("sessions", sessionsRoot);
     const pinMedia = ctx.media.registerSource("pins", pinsRoot);
     service = new CaptureService(
       {
-        hideMain: () => ctx.windows.hideMain(),
+        getMain: () => ctx.windows.getMain(),
         create: (spec) => ctx.windows.create(spec),
         close: (window) => ctx.windows.close(window),
       },
@@ -43,6 +46,7 @@ export default {
       (pin) => pins.create(pin),
       sessionMedia,
       pinMedia,
+      ctx.log.child("capture-service"),
     );
 
     const hotkeyResult = ctx.hotkeys.register(settings.get().hotkey, () => {
@@ -183,6 +187,7 @@ async function runCapture(
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    pluginLog?.error("截图失败", { mode, error });
     console.error("截图失败", error);
     if (Notification.isSupported()) {
       new Notification({ title: "截图失败", body: message }).show();

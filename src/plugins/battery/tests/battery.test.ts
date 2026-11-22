@@ -13,6 +13,11 @@ import {
   sanitizeBatterySettings,
 } from "../main/settings";
 import { migrateDevices } from "../main/store";
+import { frameToReading } from "../main/hid/scale";
+import {
+  batteryReadingDetails,
+  outOfRangeRawPercent,
+} from "../main/logging";
 
 describe("Battery Hub integration", () => {
   it("reads JZ M7 battery byte 8 and rejects unrelated reports", () => {
@@ -20,6 +25,44 @@ describe("Battery Hub integration", () => {
     expect(parseJzM7Frame(report)?.capacity).toBe(78);
     expect(parseJzM7Frame([0xa1, 0x51, 0, 0, 0, 0, 0, 0, 78])).toBeNull();
     expect(parseJzM7Frame([0xa1, 0x50, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
+  });
+
+  it("keeps calibrated raw bytes and flags values outside percent range", () => {
+    const profile = {
+      usagePage: 0xff02,
+      usage: 2,
+      reportKind: "feature" as const,
+      reportId: 6,
+      readLength: 9,
+      trigger: null,
+      byteOffset: 7,
+      scaleMin: 0,
+      scaleMax: 100,
+    };
+    const frame = [0, 0, 0, 0, 0, 0, 0, 201, 0];
+    const reading = frameToReading(frame, profile);
+    expect(reading).toMatchObject({
+      capacity: 100,
+      raw: frame,
+    });
+    expect(outOfRangeRawPercent(reading!, profile)).toBe(201);
+
+    const card = {
+      id: "6785:4610:",
+      product: "wireless dongle",
+      manufacturer: "MOSART Semi.",
+      driverId: "generic",
+      profile,
+      customName: "键盘-ikbc静音红轴",
+    };
+    expect(batteryReadingDetails(card.id, card, reading!, null)).toMatchObject({
+      deviceId: "6785:4610:",
+      name: "键盘-ikbc静音红轴",
+      driverId: "generic",
+      capacity: 100,
+      raw: frame,
+      rawHex: "00 00 00 00 00 00 00 c9 00",
+    });
   });
 
   it("sanitizes polling and alert settings", () => {

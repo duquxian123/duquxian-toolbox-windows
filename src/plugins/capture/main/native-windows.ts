@@ -131,7 +131,10 @@ function isWindowCloaked(hwnd: bigint): boolean {
   return result === 0 && Boolean(cloaked[0]);
 }
 
-function isEligibleWindow(hwnd: bigint): boolean {
+function isEligibleWindow(
+  hwnd: bigint,
+  includeCurrentProcess: boolean,
+): boolean {
   if (!hwnd || !IsWindowVisible(hwnd) || IsIconic(hwnd) || isWindowCloaked(hwnd)) {
     return false;
   }
@@ -141,11 +144,14 @@ function isEligibleWindow(hwnd: bigint): boolean {
   }
   const processId = [0];
   GetWindowThreadProcessId(hwnd, processId);
-  return processId[0] !== process.pid;
+  return includeCurrentProcess || processId[0] !== process.pid;
 }
 
-function describeWindow(hwnd: bigint): WindowTarget | null {
-  if (!isEligibleWindow(hwnd)) {
+function describeWindow(
+  hwnd: bigint,
+  includeCurrentProcess: boolean,
+): WindowTarget | null {
+  if (!isEligibleWindow(hwnd, includeCurrentProcess)) {
     return null;
   }
   const title = readWindowTitle(hwnd);
@@ -170,7 +176,7 @@ export class NativeWindows {
     return process.platform === "win32";
   }
 
-  listTopLevelWindows(): WindowTarget[] {
+  listTopLevelWindows(options: { includeCurrentProcess?: boolean } = {}): WindowTarget[] {
     if (!NativeWindows.available()) {
       return [];
     }
@@ -180,7 +186,7 @@ export class NativeWindows {
         return true;
       }
       try {
-        const window = describeWindow(hwnd);
+        const window = describeWindow(hwnd, options.includeCurrentProcess ?? false);
         if (window) {
           windows.push(window);
         }
@@ -205,7 +211,7 @@ export class NativeWindows {
       return null;
     }
     const root = GetAncestor(child, 2) ?? child;
-    return describeWindow(root);
+    return describeWindow(root, false);
   }
 
   cursorVisible(): boolean {

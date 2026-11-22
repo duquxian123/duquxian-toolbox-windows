@@ -5,6 +5,7 @@ import type {
 } from "electron";
 import type { CoreSettings, Rectangle } from "../../shared/types";
 import type { PluginMeta } from "../../shared/plugin";
+import type { Logger } from "../logger";
 
 export interface TrayContribution {
   tooltipLines?: string[];
@@ -66,7 +67,7 @@ export interface PluginContext {
   settings: {
     getCore(): CoreSettings;
   };
-  log: Pick<Console, "info" | "warn" | "error">;
+  log: Logger;
 }
 
 export interface PluginMainModule {

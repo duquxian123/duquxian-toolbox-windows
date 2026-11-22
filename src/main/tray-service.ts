@@ -1,5 +1,6 @@
 import { Menu, Tray, nativeImage } from "electron";
 import { join } from "node:path";
+import type { Logger } from "./logger";
 import type { TrayContribution } from "./plugin/types";
 import type { WindowManager } from "./window-manager";
 
@@ -10,6 +11,7 @@ export class TrayService {
   constructor(
     private readonly windows: WindowManager,
     private readonly quit: () => void,
+    private readonly logger: Logger,
   ) {}
 
   contribute(provider: () => TrayContribution | null): () => void {
@@ -33,6 +35,7 @@ export class TrayService {
     const icon = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
     this.tray = new Tray(icon);
     this.tray.setToolTip("独去闲工具箱");
+    this.logger.info("托盘已初始化");
     this.tray.on("click", () => {
       void this.windows.showMain();
     });
@@ -42,6 +45,7 @@ export class TrayService {
   dispose(): void {
     this.tray?.destroy();
     this.tray = null;
+    this.logger.info("托盘已释放");
   }
 
   private contributions(): TrayContribution[] {
@@ -53,6 +57,7 @@ export class TrayService {
           result.push(contribution);
         }
       } catch (error) {
+        this.logger.error("托盘贡献项生成失败", { error });
         console.error("托盘贡献项生成失败", error);
       }
     }

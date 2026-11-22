@@ -6,6 +6,7 @@ import type {
   BatterySettings,
 } from "../shared/types";
 import { atomicJsonWrite, readJson } from "../../../main/fs-utils";
+import type { Logger } from "../../../main/logger";
 import {
   DEFAULT_BATTERY_SETTINGS,
   sanitizeBatterySettings,
@@ -66,12 +67,18 @@ export class BatteryStore {
   private data: BatteryStoreData = EMPTY_DATA();
   private writeChain: Promise<void> = Promise.resolve();
 
-  private constructor(rootDir: string) {
+  private constructor(
+    rootDir: string,
+    private readonly logger: Logger | null = null,
+  ) {
     this.filePath = join(rootDir, "battery-hub.json");
   }
 
-  static async create(rootDir: string): Promise<BatteryStore> {
-    const store = new BatteryStore(rootDir);
+  static async create(
+    rootDir: string,
+    logger: Logger | null = null,
+  ): Promise<BatteryStore> {
+    const store = new BatteryStore(rootDir, logger);
     const legacyToolboxPath = join(
       app.getPath("userData"),
       "battery-hub.json",
@@ -193,6 +200,7 @@ export class BatteryStore {
     this.writeChain = this.writeChain
       .then(() => atomicJsonWrite(this.filePath, this.data))
       .catch((error) => {
+        this.logger?.error("电量数据保存失败", { error });
         console.error("电量数据保存失败", error);
       });
     await this.writeChain;

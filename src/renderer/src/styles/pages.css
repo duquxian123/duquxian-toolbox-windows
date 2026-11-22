@@ -96,6 +96,94 @@
   font-size: 12px;
 }
 
+.log-dialog-scrim {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 34%);
+  backdrop-filter: blur(2px);
+}
+
+.log-dialog {
+  display: grid;
+  width: min(960px, 100%);
+  max-height: min(780px, calc(100vh - 48px));
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-strong);
+}
+
+.log-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.log-dialog-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.log-dialog-head p,
+.log-dialog-foot {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.log-dialog-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.log-dialog-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.log-dialog-meta span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-dialog-meta span:last-child {
+  flex: 0 0 auto;
+}
+
+.log-dialog-content {
+  min-height: 280px;
+  max-height: 600px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+}
+
 .plugin-error-card,
 .plugin-loading-card {
   display: flex;
@@ -158,5 +246,23 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .log-dialog-scrim {
+    padding: 12px;
+  }
+
+  .log-dialog {
+    max-height: calc(100vh - 24px);
+    padding: 14px;
+  }
+
+  .log-dialog-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .log-dialog-actions {
+    flex-wrap: wrap;
   }
 }

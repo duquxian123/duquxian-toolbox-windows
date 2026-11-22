@@ -26,6 +26,12 @@ import {
 } from "./monitor";
 import type { BatteryNotifier } from "./notifier";
 import type { BatteryStore } from "./store";
+import type { Logger } from "../../../main/logger";
+import {
+  batteryReadingDetails,
+  batteryRouteDetails,
+  outOfRangeRawPercent,
+} from "./logging";
 
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const TREND_LEN = 4;
@@ -48,6 +54,7 @@ export class BatteryManager {
   constructor(
     private readonly store: BatteryStore,
     private readonly notifier: BatteryNotifier,
+    private readonly logger: Logger,
   ) {}
 
   setListeners(
@@ -61,6 +68,7 @@ export class BatteryManager {
   async start(): Promise<void> {
     this.stopTimer();
     const interval = Math.max(10, this.store.getSettings().pollIntervalSec) * 1000;
+    this.logger.info("电量轮询已启动", { intervalSec: interval / 1000 });
     await this.safePoll();
     this.timer = setInterval(() => void this.safePoll(), interval);
   }
@@ -73,6 +81,7 @@ export class BatteryManager {
   }
 
   async stop(): Promise<void> {
+    this.logger.info("电量轮询正在停止");
     this.stopTimer();
     stopAllBatteryMonitors();
     stopSystemBatteryWatcher();
@@ -84,10 +93,21 @@ export class BatteryManager {
   }
 
   async listCandidates(): Promise<BatteryLiveDevice[]> {
-    const [hidDevices, systemDevices] = await Promise.all([
-      this.hid.enumerate(),
-      scanSystemBatteries(),
-    ]);
+    let hidDevices;
+    let systemDevices;
+    try {
+      [hidDevices, systemDevices] = await Promise.all([
+        this.hid.enumerate(),
+        scanSystemBatteries(),
+      ]);
+    } catch (error) {
+      this.logger.error("电量设备扫描失败", { error });
+      throw error;
+    }
+    this.logger.info("电量设备扫描完成", {
+      hidCount: hidDevices.length,
+      windowsCount: systemDevices.length,
+    });
     const claimed = new Set(
       Object.values(this.store.getDevices()).flatMap(
         (device) => routesOf(device).map((route) => route.id),
@@ -124,7 +144,12 @@ export class BatteryManager {
     return this.withPollingPaused(async () => {
       const live = (await this.hid.enumerate()).find((device) => device.id === id);
       if (!live) throw new Error("设备未连接");
-      return this.hid.capture(live);
+      try {
+        return await this.hid.capture(live);
+      } catch (error) {
+        this.logger.error("电量校准报文捕获失败", { deviceId: id, error });
+        throw error;
+      }
     });
   }
 
@@ -146,6 +171,7 @@ export class BatteryManager {
         detail: "node-hid 工作进程能够枚举外设。",
       });
     } catch (error) {
+      this.logger.warn("HID 电量读取检查失败", { error });
       checks.push({
         id: "hid",
         title: "HID 电量读取",
@@ -203,6 +229,7 @@ export class BatteryManager {
     try {
       await this.pollOnce();
     } catch (error) {
+      this.logger.error("电量轮询失败", { error });
       console.error("电量轮询失败", error);
     }
   }
@@ -261,6 +288,11 @@ export class BatteryManager {
       id,
       (reading) => this.commitReading(id, reading),
       (state) => {
+        this.logger.info("事件设备连接状态变化", {
+          deviceId: id,
+          state,
+          previousError: card.lastError ?? null,
+        });
         const patch = state === "connected"
           ? { online: true, lastError: null }
           : state === "python-missing"
@@ -284,6 +316,7 @@ export class BatteryManager {
 
   private async pollDevice(id: string, card: BatteryDevice, live: BatteryLiveDevice[]): Promise<void> {
     let result = null;
+    let usedRoute = null;
     for (const route of routesOf(card)) {
       if (isSystemBatteryId(route.id)) {
         const system = getSystemBattery(route.id);
@@ -292,17 +325,19 @@ export class BatteryManager {
             status: "ok",
             reading: { capacity: system.capacity, charging: null, voltageMv: null },
           };
+          usedRoute = route;
           break;
         }
         result = {
           status: "error",
           error: new Error(hasSystemBatteryScan() ? "not connected" : "等待 Windows 扫描"),
+          route,
         };
         continue;
       }
       const candidate = live.find((device) => device.id === route.id);
       if (!candidate) {
-        result = { status: "error", error: new Error("not connected") };
+        result = { status: "error", error: new Error("not connected"), route };
         continue;
       }
       try {
@@ -314,17 +349,18 @@ export class BatteryManager {
           route.profile ?? null,
         );
         result = { status: "ok", reading };
+        usedRoute = route;
         break;
       } catch (error) {
-        result = { status: "error", error };
+        result = { status: "error", error, route };
       }
     }
 
     if (!result) {
-      result = { status: "error", error: new Error("not connected") };
+      result = { status: "error", error: new Error("not connected"), route: null };
     }
     if (result.status === "ok") {
-      this.commitReading(id, result.reading);
+      this.commitReading(id, result.reading, usedRoute);
       return;
     }
     const message = result.error?.message ?? "not connected";
@@ -335,12 +371,26 @@ export class BatteryManager {
       online: !expected,
       failedReads: expected ? 0 : (card.failedReads ?? 0) + 1,
     };
+    const details = {
+      ...batteryRouteDetails(id, card, result.route),
+      message,
+      expected,
+      failedReads: patch.failedReads,
+    };
+    if (expected) {
+      this.logger.warn("电量读取失败", details);
+    } else {
+      this.logger.error("电量读取失败", {
+        ...details,
+        error: result.error,
+      });
+    }
     this.store.upsertDevice(id, patch);
     this.onUpdate(this.store.getDevice(id)!);
     this.onDevicesChanged(null);
   }
 
-  private commitReading(id: string, reading): void {
+  private commitReading(id: string, reading, route: BatteryDeviceRoute | null = null): void {
     const card = this.store.getDevice(id);
     if (!card || card.hidden) return;
     let charging = reading.charging;
@@ -350,6 +400,20 @@ export class BatteryManager {
       charging = trend.length >= 2 && trend.at(-1) > trend[0];
     }
     const now = Date.now();
+    const details = batteryReadingDetails(id, card, reading, route);
+    const rawPercent = outOfRangeRawPercent(
+      reading,
+      route?.profile ?? card.profile,
+    );
+    if (rawPercent !== null) {
+      this.logger.warn("电量读数超出百分比范围", {
+        ...details,
+        rawPercent,
+        expectedRange: [0, 100],
+      });
+    } else {
+      this.logger.info("电量读取成功", details);
+    }
     const updated = this.store.upsertDevice(id, {
       lastReading: { ...reading, charging },
       lastReadingAt: now,
@@ -368,6 +432,17 @@ export class BatteryManager {
       return this.liveCache;
     }
     const devices = await this.hid.enumerate();
+    this.logger.info("HID 设备枚举完成", {
+      count: devices.length,
+      devices: devices.map((device) => ({
+        deviceId: device.id,
+        product: device.product,
+        manufacturer: device.manufacturer,
+        vendorId: device.vendorId,
+        productId: device.productId,
+        channelCount: device.channels.length,
+      })),
+    });
     this.logicalCache = devices;
     this.liveCache = devices.map((device) => ({
       id: device.id,

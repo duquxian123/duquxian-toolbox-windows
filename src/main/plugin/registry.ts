@@ -3,6 +3,7 @@ import type {
   PluginRuntimeInfo,
   PluginRuntimeState,
 } from "../../shared/plugin";
+import type { Logger } from "../logger";
 import type {
   PluginContextHandle,
   PluginMainModule,
@@ -50,6 +51,7 @@ export class PluginRegistry {
     private readonly createContext: (
       meta: PluginMeta,
     ) => PluginContextHandle,
+    private readonly logger: Logger,
     private readonly onStatusChanged: (
       plugins: PluginRuntimeInfo[],
     ) => void = () => {},
@@ -105,6 +107,7 @@ export class PluginRegistry {
       return Promise.allSettled(this.pipelines).then(() => undefined);
     }
     this.started = true;
+    this.logger.info("插件初始化开始", { plugins: this.ids });
     this.emitStatus();
     for (const entry of this.entries) {
       this.pipelines.push(this.initializeEntry(entry));
@@ -143,6 +146,10 @@ export class PluginRegistry {
         throw new Error("插件元信息与目录名不一致");
       }
       entry.meta = loadedMeta.meta;
+      this.logger.info("插件元信息已加载", {
+        pluginId: entry.id,
+        title: entry.meta.navTitle,
+      });
       this.emitStatus();
       if (this.stopping) {
         return;
@@ -171,6 +178,7 @@ export class PluginRegistry {
       await entry.module.start?.();
       entry.state = "ready";
       entry.error = undefined;
+      this.logger.info("插件已就绪", { pluginId: entry.id });
     } catch (error) {
       this.fail(entry, error);
     } finally {
@@ -188,7 +196,16 @@ export class PluginRegistry {
     entry.error = message;
     this.disposeEntry(entry);
     if (report) {
+      this.logger.error("插件执行失败", {
+        pluginId: entry.id,
+        error,
+      });
       console.error(`插件 ${entry.id} 执行失败：${message}`);
+    } else {
+      this.logger.warn("插件停止失败", {
+        pluginId: entry.id,
+        error,
+      });
     }
   }
 
@@ -200,6 +217,10 @@ export class PluginRegistry {
     try {
       entry.handle?.dispose();
     } catch (error) {
+      this.logger.error("插件清理失败", {
+        pluginId: entry.id,
+        error,
+      });
       console.error(`插件 ${entry.id} 清理失败`, error);
     }
   }
