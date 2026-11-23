@@ -20,6 +20,7 @@ import {
   normalizeRect,
 } from "../shared/geometry";
 import { Icon } from "./icons";
+import { updateAnnotationDraft } from "../shared/annotationDraft";
 import { errorMessage } from "../../../renderer/src/utils";
 import {
   canvasToPng,
@@ -70,6 +71,7 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const autoCopyStarted = useRef(false);
+  const annotationStart = useRef<Point | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -369,6 +371,7 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
     event.currentTarget.setPointerCapture(event.pointerId);
 
     if (tool === "select") {
+      annotationStart.current = null;
       const hit = [...annotations].reverse().find((annotation) =>
         hitTestAnnotation(annotation, point),
       );
@@ -386,11 +389,13 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
     }
 
     if (tool === "text") {
+      annotationStart.current = null;
       setSelectedAnnotation(null);
       setTextPoint(point);
       return;
     }
 
+    annotationStart.current = point;
     const id = crypto.randomUUID();
     const base = { id, color, strokeWidth };
     let next: Annotation;
@@ -419,7 +424,9 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
     const point = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    setDraft(updateDraft(draft, point));
+    if (annotationStart.current) {
+      setDraft(updateAnnotationDraft(draft, annotationStart.current, point));
+    }
   };
 
   const finishAnnotation = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -436,6 +443,7 @@ export function CaptureOverlay({ sessionId }: { sessionId: string }) {
       setAnnotations((current) => [...current, draft]);
       setRedoStack([]);
     }
+    annotationStart.current = null;
     setDraft(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -917,23 +925,6 @@ function resizeRectangle(
     width: Math.max(10, next.width),
     height: Math.max(10, next.height),
   };
-}
-
-function updateDraft(annotation: Annotation, point: Point): Annotation {
-  if (annotation.type === "rectangle" || annotation.type === "ellipse" || annotation.type === "mosaic") {
-    const normalized = normalizeRect(
-      { x: annotation.x, y: annotation.y },
-      point,
-    );
-    return { ...annotation, ...normalized };
-  }
-  if (annotation.type === "arrow") {
-    return { ...annotation, x2: point.x, y2: point.y };
-  }
-  if (annotation.type === "pen") {
-    return { ...annotation, points: [...annotation.points, point] };
-  }
-  return annotation;
 }
 
 function hitTestAnnotation(annotation: Annotation, point: Point): boolean {

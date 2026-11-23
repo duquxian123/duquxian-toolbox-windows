@@ -1,6 +1,6 @@
 # 独去闲工具箱
 
-Windows 10/11 · Electron + React + TypeScript · v1.1.2
+Windows 10/11 · Electron + React + TypeScript · v1.1.3
 
 本地工具箱，集中处理三件日常任务：截图标注、查看无线外设电量、按拍摄时间整理照片和视频。应用不要求账号，不上传文件，也不包含遥测。
 
